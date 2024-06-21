@@ -1,0 +1,2 @@
+id,name,label,length,requireReliever,employeesGetAllowance,applicableToCertainGroup,groupId,gender,maritalStatus,employeeStatus,isActive,companyId,typeOfLength
+23,Maternity Leave,maternity-leave,20,1,1,0,,female,married,confirmed,1,39,fixed

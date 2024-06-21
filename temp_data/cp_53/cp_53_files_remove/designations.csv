@@ -1,0 +1,39 @@
+id,name,label,departmentId,companyId
+73,Backend Developer,backend-developer,65,53
+74,Frontend Developer,frontend-developer,65,53
+75,Product Manager,product-manager,65,53
+76,UI/UX Designer,uiux-designer,65,53
+77,"Team Lead, App Development",team-lead-app-development,65,53
+78,Solution Sales Executive,solution-sales-executive,66,53
+79,"Team Lead, Business Development",team-lead-business-development,66,53
+80,Marketing Manager,marketing-manager,66,53
+81,Marketing Executive,marketing-executive,66,53
+82,Sales Manager,sales-manager,66,53
+83,Chief Executive Officer,chief-executive-officer,67,53
+84,Secretary to the CEO,secretary-to-the-ceo,67,53
+85,Executive Assistant to the CEO,executive-assistant-to-the-ceo,67,53
+86,Chief Financial Officer,chief-financial-officer,68,53
+87,Finance Officer,finance-officer,68,53
+88,Finance Analyst,finance-analyst,68,53
+89,Senior Account Officer,senior-account-officer,68,53
+90,"Head, Corporate Services",head-corporate-services,69,53
+91,Business Analyst,business-analyst,69,53
+92,"Team Lead, Legal Services",team-lead-legal-services,70,53
+93,Legal Officer,legal-officer,70,53
+94,"Head, Internal Audit & Control",head-internal-audit-control,71,53
+95,Audit Executive,audit-executive,71,53
+96,"Team Lead, Supply Chain",team-lead-supply-chain,72,53
+97,Procurement Officer,procurement-officer,72,53
+98,IT Manager,it-manager,73,53
+99,"Team Lead, IT",team-lead-it,73,53
+100,IT Officer,it-officer,73,53
+101,"Head, Human Resources",head-human-resources,74,53
+102,HR Manager,hr-manager,74,53
+103,HR Officer,hr-officer,74,53
+104,Front Desk Officer,front-desk-officer,75,53
+105,Security Guard,security-guard,75,53
+106,Cleaner,cleaner,75,53
+107,"Head, Admin",head-admin,75,53
+108,"Team Lead, Project Management",team-lead-project-management,76,53
+109,Project Manager,project-manager,76,53
+110,SCRUM Master,scrum-master,76,53

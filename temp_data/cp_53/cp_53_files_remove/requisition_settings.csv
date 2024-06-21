@@ -1,0 +1,9 @@
+id,type,isActive,workflowId,companyId
+53,asset,1,60,53
+54,job,1,60,53
+55,money,1,63,53
+56,position-change,1,62,53
+57,promotion,1,62,53
+58,reimbursement,1,63,53
+59,transfer,1,62,53
+60,travel,1,60,53

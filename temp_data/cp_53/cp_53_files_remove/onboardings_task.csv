@@ -1,0 +1,4 @@
+id,onboardingId,name,description,priority,supervisorId,startDate,endDate,companyId
+18,157,Welcome by HR,About Snapnet,high,372,2024-06-03 11:37:07,2024-06-04 11:37:12,53
+19,157,Collection of ID Card and Laptop,"ID Card, Laptop with all necessary apps installed",high,416,2024-06-03 11:38:49,2024-06-03 11:38:56,53
+20,157,App Dev Onboarding,App Dev Onboarding,medium,449,2024-06-05 09:40:44,2024-06-05 11:41:03,53

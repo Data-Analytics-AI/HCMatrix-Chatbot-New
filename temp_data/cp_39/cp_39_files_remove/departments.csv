@@ -1,0 +1,8 @@
+id,name,label,companyId,departmentHeadId,email,parentDepartmentId,deletedAt
+52,IT,it,39,347.0,it@gomayah.com,52.0,
+53,Finance and Admin,finance-and-admin,39,342.0,financeadmin@gomayah.com,53.0,
+54,Business Apps,business-apps,39,348.0,bpa@gomayah.com,54.0,
+55,Service Delivery,service-delivery,39,346.0,servicedelivery@gomayah.com,55.0,
+56,Human Resources,human-resources,39,350.0,hr@gomayah.com,56.0,
+59,CEO's Office,ceo's-office,39,,ceo@gmail.com,,
+60,Corporate Services,corporate-services,39,361.0,corpserv@gomayah.com,,

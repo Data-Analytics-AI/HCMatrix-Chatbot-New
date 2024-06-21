@@ -1,0 +1,2 @@
+id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
+122,2015-01-03 23:46:25,100000.0,part-time,remote,5,375,53,2015-01-03 23:46:25,2015-07-03 23:46:25,2015-07-03 23:46:25,,54,,direct-salary,,monthly

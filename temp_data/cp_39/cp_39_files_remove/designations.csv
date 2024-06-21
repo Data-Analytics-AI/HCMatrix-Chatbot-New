@@ -1,0 +1,17 @@
+id,name,label,departmentId,companyId
+56,"HOD, Finance",hod-finance,53,39
+57,IT officer,it-officer,52,39
+58,CSI Consultant,csi-consultant,54,39
+59,Project Manager,project-manager,55,39
+60,HR Officer,hr-officer,56,39
+61,"HOD, Service Delivery 			",hod-service-delivery-,55,39
+62,"HOD, IT 			",hod-it-,52,39
+63,"HOD, Business Apps 			",hod-business-apps-,54,39
+64,Finance and Admin Officer 			,finance-and-admin-officer-,53,39
+65,"HOD, HR",hod-hr,56,39
+66,Director,director,53,39
+67,Admin,admin,53,39
+68,CEO,ceo,59,39
+69,"Head, Corporate Services",head-corporate-services,60,39
+70,Corporate Services Officer,corporate-services-officer,60,39
+71,Corporate Services Manager,corporate-services-manager,60,39

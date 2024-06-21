@@ -1,0 +1,41 @@
+id,companyId,streetAddress,countryId,stateId,lgaId,timezone,longitude,latitude
+236,53,"17 Charles Ifeanyi St, Lekki Phase I, Lekki 106104, Lagos, Nigeria",160,2671,513.0,Etc/GMT,3.4667381,6.443230199999999
+237,53,"Ikeja, Lagos, Nigeria",160,2671,518.0,Etc/GMT,3.3514863,6.601838
+238,53,"770 Samuel Ademulegun Ave, Central Area, Abuja 900103, Federal Capital Territory, Nigeria",160,2648,279.0,Etc/GMT,7.481833,9.0564233
+239,53,Ghana,83,1403,,Etc/GMT,-1.023194,7.946527
+240,53,Canada,38,671,,America/Chicago,-106.346771,56.130366
+241,53,"Lagos, Nigeria",160,2671,518.0,Etc/GMT,3.3792057,6.5243793
+248,53,"17 Charles Ifeanyi St, Lekki Phase I, Lekki 106104, Lagos, Nigeria",160,2671,513.0,Africa/Lagos,,
+249,53,"770 Samuel Ademulegun Ave, Central Area, Abuja 900103, Federal Capital Territory, Nigeria",160,2648,279.0,Africa/Lagos,7.481833,9.0564233
+250,53,"Ikeja, Lagos, Nigeria",160,2671,518.0,Africa/Lagos,3.3514863,6.601838
+251,53,"17 Charles Ifeanyi St, Lekki Phase I, Lekki 106104, Lagos, Nigeria",160,2671,513.0,Africa/Lagos,3.4667381,6.443230199999999
+252,53,"Sanni Balogun St, Abule Egba, Lagos 101232, Lagos, Nigeria",160,2671,,Africa/Lagos,3.306456,6.6608709
+253,53,"Onanubi St, Ifako-Ijaiye, Ifako/Ijaye 101232, Lagos, Nigeria",160,2671,508.0,Africa/Lagos,3.3161294,6.6576263
+254,53,"1036 Jereton Mariere St, Gudu, Abuja 900110, Federal Capital Territory, Nigeria",160,2648,,Africa/Lagos,7.480294300000001,9.0039617
+255,53,"14 Ajayi St, Ketu, Lagos 105102, Lagos, Nigeria",160,2671,518.0,Africa/Lagos,3.3905562,6.6007012
+256,53,"Central Business District, Abuja, Federal Capital Territory, Nigeria",160,2648,,Africa/Lagos,7.489413099999998,9.0585927
+257,53,"309, 35 Iya Abubakar Cres, Jabi, Abuja 23409, Federal Capital Territory, Nigeria",160,2648,281.0,Africa/Lagos,7.412462799999999,9.073267
+258,53,"Ajegunle Road, Shaki 203101, Oyo, Nigeria",160,2677,1437.0,Africa/Lagos,3.3971728,8.6620796
+259,53,"14 Awosika Ave, Ibadan 200285, Oyo, Nigeria",160,2677,641.0,Africa/Lagos,3.9060996,7.422051000000001
+260,53,"Idi Ope Street, Eleyele, Ibadan 200116, Oyo, Nigeria",160,2677,637.0,Africa/Lagos,3.8586872,7.4117634
+261,53,"Oke-ado, Odukale St, Imalefalafia Street, Southwest, Ibadan 200252, Oyo, Nigeria",160,2677,1425.0,Africa/Lagos,3.8799332,7.362358999999999
+262,53,"Agodi, Ibadan 200285, Oyo, Nigeria",160,2677,637.0,Africa/Lagos,3.9139109,7.402097299999999
+263,53,"31 Itsekiri St, Iju, Lagos 112107, Ogun State, Nigeria",160,2674,565.0,Africa/Lagos,3.3462774,6.6764813
+264,53,"133 Idiroko Rd, Oju-ore, Ota 112104, Ogun State, Nigeria",160,2674,566.0,Africa/Lagos,3.2274379,6.6896665
+265,53,"2 Popoola St, Ota 112104, Ogun State, Nigeria",160,2674,566.0,Africa/Lagos,3.1718631,6.689077999999999
+266,53,"10 Idiroko Rd, Ota 112104, Ogun State, Nigeria",160,2674,566.0,Africa/Lagos,3.1415605,6.680441399999999
+267,53,"14 Idiroko Rd, Iju 112104, Ogun State, Nigeria",160,2674,566.0,Africa/Lagos,3.1336255,6.676835899999999
+268,53,"1 Dele Adesina Street, Ojo, Lagos 102101, Lagos, Nigeria",160,2671,511.0,Africa/Lagos,3.1897545,6.4654419
+269,53,"9 Hakeem Dickson Link Rd, Lekki Phase 1, Lagos 106104, Lagos, Nigeria",160,2671,514.0,Africa/Lagos,3.4748979,6.4407996
+270,53,"Idi Ape Rd, Ibadan 200258, Oyo, Nigeria",160,2677,638.0,Africa/Lagos,3.9206633,7.4079164
+271,53,"4 Adeleke Adeogun St, Oluyole, Ibadan 200273, Oyo, Nigeria",160,2677,,Africa/Lagos,3.8480656,7.3650657
+272,53,"32 MKO Abiola Way, Oluyole, Ibadan 200273, Oyo, Nigeria",160,2677,656.0,Africa/Lagos,3.8753148,7.351961799999999
+273,53,"Somorin Street, Abeokuta 110121, Ogun State, Nigeria",160,2674,1339.0,Africa/Lagos,3.3726396,7.1677378
+274,53,"Lantoro Road, Abeokuta 111101, Ogun State, Nigeria",160,2674,564.0,Africa/Lagos,3.3629106,7.1619512
+275,53,"7 T. F. Kuboye Rd, Maroko, Lagos 106104, Lagos, Nigeria",160,2671,1288.0,Africa/Lagos,3.4589548,6.4288472
+276,53,"3, 5 Adetola Ayeni St, Lekki Penninsula II, Lekki 106104, Lagos, Nigeria",160,2671,519.0,Africa/Lagos,3.4852781,6.4480398
+277,53,"26 Monrovia St, Wuse, Abuja 904101, Federal Capital Territory, Nigeria",160,2648,277.0,Africa/Lagos,7.471248899999999,9.0810371
+278,53,"Coscharis Motors, Plot 388 Constitution Ave, Central Business District, Abuja 900103, Federal Capital Territory, Nigeria",160,2648,276.0,Africa/Lagos,7.4794562,9.0514664
+279,53,"Area 11, AMAC 900103, Federal Capital Territory, Nigeria",160,2648,1052.0,Africa/Lagos,7.5044203,9.0397728
+280,53,"General Gas - Iyana Church Rd, Akobo, Ibadan 200132, Oyo, Nigeria",160,2677,633.0,Africa/Lagos,3.952925,7.4267342
+281,53,"216 Broad St, Lagos Island, Lagos 102273, Lagos, Nigeria",160,2671,519.0,Africa/Lagos,3.3973656,6.4477635

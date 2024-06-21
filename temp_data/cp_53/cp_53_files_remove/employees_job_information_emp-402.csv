@@ -1,0 +1,2 @@
+id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
+135,2022-12-30 23:46:25,100000.0,part-time,remote,5,402,53,2022-12-30 23:46:25,2023-06-30 23:46:25,2023-06-30 23:46:25,,54,,direct-salary,,monthly

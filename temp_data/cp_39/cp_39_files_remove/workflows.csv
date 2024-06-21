@@ -1,0 +1,5 @@
+id,name,label,type,lastModifiedById,companyId,deletedAt
+53,Vehicle Requisition Workflow,vehicle-requisition-workflow,basic,361,39,
+54,Vehicle requisition advanced,vehicle-requisition-advanced,advanced,361,39,
+55,Loan workflow,loan-workflow,basic,361,39,
+56,Leave workflow,leave-workflow,basic,361,39,

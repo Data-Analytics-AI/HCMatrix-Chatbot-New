@@ -1,0 +1,2 @@
+id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
+128,2024-05-28 00:00:00,100000.0,full-time,remote,5,395,53,2024-05-28 00:00:00,2024-11-28 00:00:00,2024-11-28 00:00:00,,50,,direct-salary,,monthly

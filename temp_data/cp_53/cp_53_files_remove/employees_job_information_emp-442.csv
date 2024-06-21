@@ -1,0 +1,2 @@
+id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
+186,2020-01-05 23:46:25,100000.0,full-time,on-site,5,442,53,2020-01-05 23:46:25,2020-07-05 23:46:25,2020-07-05 23:46:25,,52,,direct-salary,,monthly

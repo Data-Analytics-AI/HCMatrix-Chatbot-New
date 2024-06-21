@@ -1,0 +1,6 @@
+id,name,label,description,addressId,parentBranchId,companyId,deletedAt
+50,Lagos Island,lagos-island,Lekki Office,251,,53,
+51,Lagos Mainland,lagos-mainland,Ikeja Office,250,50.0,53,
+52,"FCT, Abuja Office","fct,-abuja-office",Abuja Office,249,50.0,53,
+53,Ghana Office,ghana-office,Ghana Office,239,50.0,53,
+54,Canada Office,canada-office,Canada Branch,240,50.0,53,

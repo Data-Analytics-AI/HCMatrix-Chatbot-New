@@ -1,0 +1,2 @@
+id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
+178,2019-04-03 23:46:25,100000.0,part-time,on-site,5,434,53,2019-04-03 23:46:25,2019-10-03 23:46:25,2019-10-03 23:46:25,,52,,direct-salary,,monthly
