@@ -5,6 +5,8 @@ from rag_engine.emdedder import EmbedChunks
 from pathlib import Path
 from typing import *
 import logging
+import json
+import time
 import os
 
 from api.schema import ChatSchema
@@ -37,6 +39,11 @@ retriever = Retriever(index, embedding_query)
 #     "employee_id": 67,
 # }
 
+def save_to_json(json_path: str, data: Dict[str, str]):
+    with open(json_path, "a+") as fle:
+        fle.write(json.dumps(data))
+        fle.write("\n")
+
 app = FastAPI()
 
 print ("Initializing API....")
@@ -56,6 +63,17 @@ def chatbot(request_model: ChatSchema):
             if request_model.query_type == "general":
                 response = chatbot_execute(request_model.user_query, request_model.employee_metadata, llm_4O, retriever)
                 answer = response['answer']
+
+                current_time = time.localtime()
+                current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", current_time)
+
+                data = {
+                    "question": request_model.user_query,
+                    "answer": answer, 
+                    "request_type": request_model.query_type,
+                    "timestamp": current_time_str
+                }
+                save_to_json(os.path.join(os.getcwd(), "query_data.json"), data)
                 return {"answer": answer}
             
             elif request_model.query_type == "database":
@@ -63,6 +81,17 @@ def chatbot(request_model: ChatSchema):
                 employee_id = request_model.employee_metadata['employee_id']
                 response = sql_chatbot_execute(company_id, employee_id, request_model.user_query, llm_4O)
                 answer = response['output']
+
+                current_time = time.localtime()
+                current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", current_time)
+
+                data = {
+                    "question": request_model.user_query,
+                    "answer": answer, 
+                    "request_type": request_model.query_type,
+                    "timestamp": current_time_str
+                }
+                save_to_json(os.path.join(os.getcwd(), "query_data.json"), data)
                 return {"answer": answer}
         except Exception as reason:
             raise HTTPException(status_code=500, detail=str(reason))
