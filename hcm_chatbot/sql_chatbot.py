@@ -58,7 +58,7 @@ def execute(company_id: str, employee_id: str, query: str, llm_4O: AzureChatOpen
     ]
 
     if response in wrong_response_list:
-        return "Sorry, couldn't get the best response to your query, kindly reach out to your HR department for the best response to your query."
+        return "Sorry, couldn't get the best response to your query, kindly reach out to your HR department for the best response to your query or retry."
     return response
     # return response["output"]
 

@@ -2,7 +2,7 @@
 import requests
 import json
 
-def chat_endpoint(user_query, query_type, employee_metadata):
+def chat_endpoint(user_query, employee_metadata):
     url = "http://0.0.0.0:5000/chat"
 
     # payload = json.dumps({
@@ -20,7 +20,7 @@ def chat_endpoint(user_query, query_type, employee_metadata):
     payload = json.dumps(
         {
             "user_query": user_query,
-            "query_type": query_type,
+            # "query_type": query_type,
             "employee_metadata": employee_metadata
         }
     )
