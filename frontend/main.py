@@ -9,8 +9,8 @@ from send_request import chat_endpoint
 # Streamlit UI components
 st.set_page_config(layout="wide")
 st.title("Snapnet HCMatrix ChatBot")
-st.text(" **Note, this chatbot is currently experimental and might return incorrect queries from time to time.** \
-         **Should that be the case, kindly retry or meet with your organization human resource manager.**")
+st.text(" **Note, this chatbot is currently experimental and might return incorrect queries from time to time.** "
+        " **Should that be the case, kindly retry or meet with your organization human resource manager.**")
 # Contextual Summarization
 with st.expander("## **HCMatrix Chatbot**"):
     input_type = st.radio("Select Query Type:", ["General", "Database"], index=0)

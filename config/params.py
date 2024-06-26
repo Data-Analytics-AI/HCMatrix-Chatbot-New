@@ -1,10 +1,11 @@
 
 from pinecone import ServerlessSpec
+import os
 
 params_config = {
     
-    "root_dir": "/home/alijoe/Documents/Snapnet Codebase/snapnet-codebase/snapnet-chatbot-v1",
-    "data_dir": "/home/alijoe/Documents/Snapnet Codebase/snapnet-codebase/snapnet-chatbot-v1/temp_data",
+    "root_dir": os.getcwd(), #"/home/alijoe/Documents/Snapnet Codebase/snapnet-codebase/snapnet-chatbot-v1",
+    "data_dir": os.path.join(os.getcwd(), "temp_data") # "/home/alijoe/Documents/Snapnet Codebase/snapnet-codebase/snapnet-chatbot-v1/temp_data",
 }
 
 credentials_config = {
