@@ -25,12 +25,14 @@ def execute(company_id: str, employee_id: str, query: str, llm_4O: AzureChatOpen
 
     employee_db = SQLDatabase.from_uri(f"sqlite:///{employee_sql_db}")
     toolkit = SQLDatabaseToolkit(db=employee_db, llm=llm_4O)
+    toolkit.get_tools()
 
     agent_executor = create_sql_agent(
         llm_4O, toolkit=toolkit, 
-        agent_type="zero-shot-react-description", 
-        max_iterations=10, 
-        verbose=False)
+        agent_type='openai-tools',
+        verbose=False,
+        max_execution_time=30,
+        handle_parsing_errors=False)
     
     response = agent_executor.invoke(query)
 
