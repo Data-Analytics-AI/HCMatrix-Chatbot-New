@@ -3,6 +3,7 @@ import os
 from config.params import params_config
 from langchain_openai import AzureChatOpenAI
 from langchain_community.utilities import SQLDatabase
+from langchain.prompts.chat import ChatPromptTemplate
 from langchain_community.agent_toolkits import create_sql_agent
 #from langchain.agents.agent_toolkits.sql import SQLDatabaseToolkit
 from langchain.agents.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
@@ -34,11 +35,30 @@ def execute(company_id: str, employee_id: str, query: str, llm_4O: AzureChatOpen
         max_execution_time=30,
         handle_parsing_errors=False)
     
-    response = agent_executor.invoke(query)
+    query_promt = ChatPromptTemplate.from_messages(
+        [
+            ("system", "You are an AI assistant developed by Snapnet for various organization use, you're capable of giving response \
+    to any questions related to an orginization within HCMatrix. These questions ranges from HR ploicy, leave policies, workflows,\
+    etc and individual employee data.\
+    You're currently conversing with employee id `{employee_id}`"),
+            ("user", "{user_query}.")
+        ]
+    )
+    
+    agent_response = agent_executor.invoke(
+        query_promt.format(employee_id= employee_id, user_query=query)
+    )
+    response = agent_response['output']
 
     ## Note, this chatbot is currently experimental and might return incorrect queries from time to time.
     ## Should that be the case, kindly retry or meet with your organization human resource manager.
+    wrong_response_list = [
+        "Agent stopped due to iteration limit or time limit.",
+        "Agent stopped due to max iterations."
+    ]
 
+    if response in wrong_response_list:
+        return "Sorry, couldn't get the best response to your query, kindly reach out to your HR department for the best response to your query."
     return response
     # return response["output"]
 
