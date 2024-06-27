@@ -27,6 +27,8 @@ pineconedb = PineconeDB()
 index = pineconedb.index
 retriever = Retriever(index, embedding_query)
 
+
+
 ### ===================== Initialize API =================================
 ## =======================================================================
 

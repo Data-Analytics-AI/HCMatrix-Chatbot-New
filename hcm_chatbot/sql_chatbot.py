@@ -23,6 +23,14 @@ def execute(company_id: str, employee_id: str, query: str, llm_4O: AzureChatOpen
     if not os.path.exists(employee_sql_db):
         raise NotImplementedError("The employee database is yet to be implemented or does not exist.")
 
+    #################################################################
+    ############# There's a bug from line 29 to 38 ##################
+    #### the employee_db, sql toolkit and the agent_executor ########
+    ## should only be initialized once rahter than re-initializing ##
+    # on every api call. the only way i can think of right now is   #
+    # create a cache of the three as a single class object then it  #
+    ############## should at least reduce the latency.  #############
+    ###################### Damn this is huge ########################
 
     employee_db = SQLDatabase.from_uri(f"sqlite:///{employee_sql_db}")
     toolkit = SQLDatabaseToolkit(db=employee_db, llm=llm_4O)
@@ -35,6 +43,7 @@ def execute(company_id: str, employee_id: str, query: str, llm_4O: AzureChatOpen
         max_execution_time=30,
         handle_parsing_errors=False)
     
+    ################## Bug ends here #################################
     query_promt = ChatPromptTemplate.from_messages(
         [
             ("system", "You are an AI assistant developed by Snapnet for various organization use, you're capable of giving response \
