@@ -1,9 +1,9 @@
 
-from typing import *
 import pandas as pd
+from typing import *
+from pathlib import Path
 from langchain.docstore.document import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter, CharacterTextSplitter
-from pathlib import Path
 
 def retrieve_document_metadata(document_id: int, company_file_access_df: pd.DataFrame) -> Dict[str, Any]:
 

@@ -5,13 +5,14 @@ from rag_engine.emdedder import EmbedChunks
 from pathlib import Path
 from typing import *
 import logging
+import uuid
 import json
 import time
 import os
 
-from api.schema import ChatSchema
 from model.azure_oai import AzureOAI
 from rag_engine.retriever_ import Retriever
+from api.schema import ChatSchema, ChatResponseSchema
 from hcm_chatbot.router import chatbot_entry_execution
 
 
@@ -21,24 +22,16 @@ from hcm_chatbot.router import chatbot_entry_execution
 azure_oai_conn = AzureOAI("4O")
 llm_4O = azure_oai_conn()
 
-embedding_query = EmbedChunks().embedding_query
-pineconedb = PineconeDB()
+# embedding_query = EmbedChunks().embedding_query
+# pineconedb = PineconeDB()
 
-index = pineconedb.index
-retriever = Retriever(index, embedding_query)
+# index = pineconedb.index
+# retriever = Retriever(index, embedding_query)
 
 
 
 ### ===================== Initialize API =================================
 ## =======================================================================
-
-# employee_metadata = {
-#     "user_departement_id" : 43,
-#     "user_role_id" : 323,
-#     "user_group_id" : 54,
-#     "company_id": "54",
-#     "employee_id": 67,
-# }
 
 def save_to_json(json_path: str, data: Dict[str, str]):
     with open(json_path, "a+") as fle:
@@ -54,7 +47,7 @@ def home():
 
 
 @app.post("/chat", status_code=status.HTTP_200_OK)
-def chatbot(request_model: ChatSchema):
+def chatbot(request_model: ChatSchema) -> ChatResponseSchema:
     for _ in range(2):
         try:
 
@@ -63,12 +56,14 @@ def chatbot(request_model: ChatSchema):
             current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", current_time)
 
             data = {
+                "employee_metadata": request_model.employee_metadata.model_dump(),
                 "question": request_model.user_query,
                 "answer": response, 
-                "timestamp": current_time_str
+                "timestamp": current_time_str,
+                "request_id": str(uuid.uuid4())
             }
             save_to_json(os.path.join(os.getcwd(), "query_data.json"), data)
-            return {"answer": response}
+            return ChatResponseSchema(**data)
         except Exception as reason:
             raise HTTPException(status_code=500, detail=str(reason))
 
