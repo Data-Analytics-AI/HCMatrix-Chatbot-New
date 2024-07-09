@@ -26,6 +26,10 @@ jobs:
         with:
           node-version: "21"
           cache: "yarn"
+      
+      - name: Install dependencies
+        run: |
+          yarn install
 
       - name: Get next version
         run: |
