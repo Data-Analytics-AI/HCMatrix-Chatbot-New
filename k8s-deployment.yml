@@ -1,0 +1,37 @@
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hcmatrix-k8s-deployment
+spec:
+  replicas: 1
+  
+  selector:
+    matchLabels:
+      app: hcmatrix-chatbot
+  
+  template:
+    metadata:
+      labels:
+        app: hcmatrix-chatbot
+  
+  spec:
+    containers:
+      - name: hcm-container
+        image: hcmatrixcontainerregistry.azurecr.io/hcmatrix-chatbot:latest
+        ports:
+        - containerPort: 5000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hcmatrix-k8s-service
+spec:
+  selector:
+    app: hcmatrix-chatbot
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+  type: LoadBalancer
