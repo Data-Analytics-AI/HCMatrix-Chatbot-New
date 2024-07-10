@@ -15,12 +15,12 @@ spec:
       labels:
         app: hcmatrix-chatbot
   
-  spec:
-    containers:
-      - name: hcm-container
-        image: hcmatrixcontainerregistry.azurecr.io/hcmatrix-chatbot:latest
-        ports:
-        - containerPort: 5000
+    spec:
+      containers:
+        - name: hcm-container
+          image: hcmatrixcontainerregistry.azurecr.io/hcmatrix-chatbot:latest
+          ports:
+          - containerPort: 5000
 
 ---
 apiVersion: v1
