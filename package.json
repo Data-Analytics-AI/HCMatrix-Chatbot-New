@@ -1,6 +1,6 @@
 {
   "name": "hcmatrix-chatbot",
-  "version": "1.0.0-dev.3",
+  "version": "1.0.0-dev.4",
   "private": true,
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

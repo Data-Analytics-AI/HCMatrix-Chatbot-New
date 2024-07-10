@@ -1,3 +1,10 @@
+# [1.0.0-dev.4](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.3...v1.0.0-dev.4) (2024-07-10)
+
+
+### Bug Fixes
+
+* node js version for deploy build ([98508c6](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/98508c627790bf154c848733b70259cb75d8d058))
+
 # [1.0.0-dev.3](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2024-07-10)
 
 
