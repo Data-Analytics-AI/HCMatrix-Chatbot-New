@@ -1,4 +1,3 @@
-
 {
   "name": "hcmatrix-chatbot",
   "version": "0.1.0",
@@ -7,7 +6,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
-    "semantic-release": "^17.0.0",
+    "semantic-release": "^17.4.2",
     "@semantic-release/changelog": "^5.0.1",
     "@semantic-release/git": "^10.0.1",
     "@semantic-release/release-notes-generator": "^9.0.3",
@@ -24,7 +23,13 @@
       "@semantic-release/npm",
       "@semantic-release/github",
       "@semantic-release/git"
+      [
+        "@semantic-release/git",
+        {
+          "assets": ["./artifacts/.VERSION", "package.json", "CHANGELOG.md"],
+          "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+        }
+      ]
     ]
   }
 }
-
