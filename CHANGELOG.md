@@ -1,3 +1,10 @@
+# [1.0.0-dev.3](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.2...v1.0.0-dev.3) (2024-07-10)
+
+
+### Bug Fixes
+
+* k8s template error. ([facc876](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/facc8768081607213ce3cb7aef0c67b500e08ea4))
+
 # [1.0.0-dev.2](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.1...v1.0.0-dev.2) (2024-07-10)
 
 
