@@ -33,8 +33,9 @@ jobs:
 
       - name: Get next version
         run: |
-          npx semantic-release --dry-run
-          cat ./artifacts/.VERSION >> $GITHUB_ENV
+          npx semantic-release --no-ci
+          VERSION=$(cat ./artifacts/.VERSION || echo "0.1.0")
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
         
