@@ -1,6 +1,6 @@
 /* eslint-disable quotes */
 module.exports = {
-    branches: ["main", { name: "dev", prerelease: true }],
+    branches: ["master", { name: "dev", prerelease: true }],
     plugins: [
       "@semantic-release/commit-analyzer",
       "@semantic-release/release-notes-generator",
