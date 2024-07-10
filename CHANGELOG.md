@@ -1,3 +1,10 @@
+# [1.0.0-dev.2](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.1...v1.0.0-dev.2) (2024-07-10)
+
+
+### Bug Fixes
+
+* action error ([c9ede6b](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/c9ede6b33c3dcb74837a54722b84239b7bcce36e))
+
 # 1.0.0-dev.1 (2024-07-10)
 
 
