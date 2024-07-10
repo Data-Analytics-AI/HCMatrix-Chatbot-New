@@ -71,7 +71,11 @@ jobs:
         uses: azure/setup-kubectl@v1
         with:
           version: 'latest'
-      
+
+      - name: Install dependencies
+        run: |
+          yarn install
+  
       - name: Azure Login
         uses: azure/login@v1
         with:
