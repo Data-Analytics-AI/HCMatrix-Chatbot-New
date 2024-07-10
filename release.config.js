@@ -1,7 +1,7 @@
 /* eslint-disable quotes */
 module.exports = {
     branches: [
-        // { name: "master" }, 
+        { name: "master" }, 
         { name: "dev", prerelease: true }
     ],
     plugins: [

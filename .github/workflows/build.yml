@@ -3,6 +3,7 @@ name: HCM K8S Deployment
 on:
   push:
     branches:
+      - master
       - dev
 
 env:
