@@ -47,10 +47,6 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      # - name: Docker Build & Push to Azure Container Registry
-      #   run: |
-      #     docker build -t $REGISTRY/$IMAGE_NAME:${{ github.sha }} .
-      #     docker push $REGISTRY/$IMAGE_NAME:${{ github.sha }}
       - name: Docker Build & Push to Azure Container Registry
         run: |
             docker build -t $REGISTRY/$IMAGE_NAME:${{ github.sha }} .
@@ -92,7 +88,7 @@ jobs:
       - name: Deploy to AKS
         run: |
           kubectl apply -f k8s-deployment.yml
-          kubectl set image deployment/hcmatrix-k8s-deployment hcm-container=$REGISTRY/$IMAGE_NAME:${{ github.sha }}
+          kubectl set image deployment/hcmatrix-k8s-deployment hcm-container=$REGISTRY/$IMAGE_NAME:latest
 
       - name: Release
         run: |
