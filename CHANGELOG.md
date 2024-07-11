@@ -1,3 +1,10 @@
+# [1.0.0-dev.5](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.4...v1.0.0-dev.5) (2024-07-10)
+
+
+### Bug Fixes
+
+* node js yarn install ([436753f](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/436753f009958d6e1129ca41a4840714089dbab3))
+
 # [1.0.0-dev.4](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.3...v1.0.0-dev.4) (2024-07-10)
 
 
