@@ -37,22 +37,3 @@ Set up monitoring and logging for your Kubernetes cluster and applications to tr
 
 Review the replicas configuration in the deployment manifest and ensure it matches your expected load and availability requirements.
 
-ACR_USERNAME = hcmatrixContainerRegistry
-ACR_PASSWORD = MvTOizEgtsvl92NSVCtVMesWKe/geZR2Oe/KmdTK7J+ACRBrtVSI
-
-To Generate Credentials
-az ad sp create-for-rbac --name "CICDApp" --role contributor --scopes /subscriptions/4b24eee8-7cbf-41e7-9887-44f164bae6d5 --sdk-auth
-
-
-{
-  "clientId": "64e9914d-6001-4562-88ce-5ec1ebd52a11",
-  "clientSecret": "p9P8Q~XzhFyYkAf~NyaJM4ivaGwDXt6zjyy16c2X",
-  "subscriptionId": "4b24eee8-7cbf-41e7-9887-44f164bae6d5",
-  "tenantId": "ba130eca-3030-48e1-9089-c979293aeb70",
-  "activeDirectoryEndpointUrl": "https://login.microsoftonline.com",
-  "resourceManagerEndpointUrl": "https://management.azure.com/",
-  "activeDirectoryGraphResourceId": "https://graph.windows.net/",
-  "sqlManagementEndpointUrl": "https://management.core.windows.net:8443/",
-  "galleryEndpointUrl": "https://gallery.azure.com/",
-  "managementEndpointUrl": "https://management.core.windows.net/"
-}
