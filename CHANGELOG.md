@@ -1,3 +1,10 @@
+# [1.0.0-dev.6](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.5...v1.0.0-dev.6) (2024-07-11)
+
+
+### Bug Fixes
+
+* latest tag error ([57c8176](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/57c81760f4bbff57ebbcf3fd55fdc959ea704454))
+
 # [1.0.0-dev.5](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.4...v1.0.0-dev.5) (2024-07-10)
 
 
