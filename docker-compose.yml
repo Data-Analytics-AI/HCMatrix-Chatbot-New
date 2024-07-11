@@ -3,9 +3,7 @@ version: '3.9'
 
 services:
   hcm_chatbot:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: hcmatrixcontainerregistry.azurecr.io/hcmatrix-chatbot:latest
     ports:
       - 5000:5000
     restart: always
