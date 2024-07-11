@@ -1,3 +1,10 @@
+# [1.0.0-dev.7](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.6...v1.0.0-dev.7) (2024-07-11)
+
+
+### Bug Fixes
+
+* latest tag error in k8s deploy ([9090915](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/909091508fb12cafd3dcf8c709f72e15f8f96de1))
+
 # [1.0.0-dev.6](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.5...v1.0.0-dev.6) (2024-07-11)
 
 
