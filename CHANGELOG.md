@@ -1,3 +1,11 @@
+# [1.0.0-dev.9](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.8...v1.0.0-dev.9) (2024-07-12)
+
+
+### Bug Fixes
+
+* change build platform from amd64 to arm64 ([6f9bafa](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/6f9bafaca8fa7dcfa5fbddc2aa65dc1699c98277))
+* change build platform from amd64 to arm64 ([0b9d49a](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/0b9d49a76ff58568d137600d0f7eefbb8548e8c2))
+
 # [1.0.0-dev.8](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.7...v1.0.0-dev.8) (2024-07-11)
 
 
