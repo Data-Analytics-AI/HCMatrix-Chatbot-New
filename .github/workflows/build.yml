@@ -49,7 +49,7 @@ jobs:
 
       - name: Docker Build & Push to Azure Container Registry
         run: |
-            docker build -t $REGISTRY/$IMAGE_NAME:${{ github.sha }} .
+            docker build --platform linux/arm64 -t $REGISTRY/$IMAGE_NAME:${{ github.sha }} .
             docker tag $REGISTRY/$IMAGE_NAME:${{ github.sha }} $REGISTRY/$IMAGE_NAME:latest  # Tag with 'latest' if desired
             docker push $REGISTRY/$IMAGE_NAME:${{ github.sha }}
             docker push $REGISTRY/$IMAGE_NAME:latest  # Push 'latest' tag if desired
