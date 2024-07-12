@@ -1,3 +1,10 @@
+# [1.0.0-dev.11](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.10...v1.0.0-dev.11) (2024-07-12)
+
+
+### Bug Fixes
+
+* change k8s pod tolerace ([7c10a71](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/7c10a7187066ec326bfd268a8237336148eb5cfa))
+
 # [1.0.0-dev.10](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.9...v1.0.0-dev.10) (2024-07-12)
 
 
