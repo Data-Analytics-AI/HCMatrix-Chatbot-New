@@ -1,3 +1,10 @@
+# [1.0.0-dev.12](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.11...v1.0.0-dev.12) (2024-07-12)
+
+
+### Features
+
+* implement buildx for multi-platform build ([4a78905](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/4a78905c0bc7b996ceac919e249c60d15c6104e4))
+
 # [1.0.0-dev.11](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.10...v1.0.0-dev.11) (2024-07-12)
 
 
