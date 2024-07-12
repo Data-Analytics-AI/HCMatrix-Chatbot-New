@@ -83,7 +83,7 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Set context to AKS cluster
-        run: az aks get-credentials --resource-group hcmatrix-devops --name hcmatrix-k8s
+        run: az aks get-credentials --resource-group hcmatrix-devops --name hcmatrix-k8s-minimal
 
       - name: Deploy to AKS
         run: |
