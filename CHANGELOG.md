@@ -1,3 +1,10 @@
+# [1.0.0-dev.13](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.12...v1.0.0-dev.13) (2024-07-12)
+
+
+### Features
+
+* implement qeum for buildx ([e6d9222](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/e6d9222bfda082c44ab27dc50ed2e945428f64f4))
+
 # [1.0.0-dev.12](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.11...v1.0.0-dev.12) (2024-07-12)
 
 
