@@ -1,3 +1,11 @@
+# [1.0.0-dev.10](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.9...v1.0.0-dev.10) (2024-07-12)
+
+
+### Bug Fixes
+
+* change build platform back to amd64 ([b1348e3](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/b1348e336a5d36caa32dca609057be5bc9546b37))
+* change k8s deployment ([a55db46](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/a55db461b63fc989647f9d433a8f66d18ef0f94a))
+
 # [1.0.0-dev.9](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.8...v1.0.0-dev.9) (2024-07-12)
 
 
