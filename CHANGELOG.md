@@ -1,3 +1,10 @@
+# [1.0.0-dev.8](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.7...v1.0.0-dev.8) (2024-07-11)
+
+
+### Bug Fixes
+
+* imagepull backoff error from k8s ([414eacf](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/414eacfe5f3386f0df1afc0eca14d10796e25bcb))
+
 # [1.0.0-dev.7](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.6...v1.0.0-dev.7) (2024-07-11)
 
 
