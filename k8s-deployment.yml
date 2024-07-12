@@ -4,7 +4,7 @@ kind: Deployment
 metadata:
   name: hcmatrix-k8s-deployment
 spec:
-  replicas: 1
+  replicas: 4
   
   selector:
     matchLabels:
@@ -16,6 +16,10 @@ spec:
         app: hcmatrix-chatbot
   
     spec:
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+          effect: "NoSchedule"
       containers:
         - name: hcm-container
           image: hcmatrixcontainerregistry.azurecr.io/hcmatrix-chatbot:latest
