@@ -40,6 +40,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
       
+      # QEMU is used automatically by docker buildx to build image
       - name: Setup QEMU for ARM emulation
         uses: docker/setup-qemu-action@v2
 

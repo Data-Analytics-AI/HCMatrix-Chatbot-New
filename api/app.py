@@ -56,7 +56,7 @@ def chatbot(request_model: ChatSchema) -> ChatResponseSchema:
             current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", current_time)
 
             data = {
-                "employee_metadata": request_model.employee_metadata.model_dump(),
+                "employee_metadata": request_model.employee_metadata.dict(),
                 "question": request_model.user_query,
                 "answer": response, 
                 "timestamp": current_time_str,
