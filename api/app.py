@@ -102,8 +102,7 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
                 if audio_response_data is None:
                     raise HTTPException(status_code=500, details="Error in generation audio response")
             
-            print("pringer")
-            local_ip = "http://127.0.0.1:5500"
+            local_ip = "http://127.0.0.1:5000"
 
             # Generate output mmetadata
             current_time = time.localtime()
