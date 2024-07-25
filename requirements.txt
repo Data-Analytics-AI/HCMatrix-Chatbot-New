@@ -14,5 +14,7 @@ azure-storage-file-datalake==12.15.0
 azure-identity==1.16.0
 azure-functions==1.19.0
 mysql-connector-python==8.4.0
+azure-cognitiveservices-speech==1.38.0
+aiofiles==24.1.0
 # nltk==3.8.1
 # scikit-learn==1.5.0
