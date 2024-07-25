@@ -39,3 +39,5 @@ id,companyId,streetAddress,countryId,stateId,lgaId,timezone,longitude,latitude
 279,53,"Area 11, AMAC 900103, Federal Capital Territory, Nigeria",160,2648,1052.0,Africa/Lagos,7.5044203,9.0397728
 280,53,"General Gas - Iyana Church Rd, Akobo, Ibadan 200132, Oyo, Nigeria",160,2677,633.0,Africa/Lagos,3.952925,7.4267342
 281,53,"216 Broad St, Lagos Island, Lagos 102273, Lagos, Nigeria",160,2671,519.0,Africa/Lagos,3.3973656,6.4477635
+303,53,"17 Charles Ifeanyi St, Lekki Phase I, Lekki 106104, Lagos, Nigeria",160,2671,513.0,Africa/Lagos,3.4667278,6.4432149
+304,53,"17 Charles Ifeanyi St, Lekki Phase I, Lekki 106104, Lagos, Nigeria",160,2671,513.0,Africa/Lagos,3.4667278,6.4432149

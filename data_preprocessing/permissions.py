@@ -40,10 +40,10 @@ class CompanyPermission(DataLoaders):
 
     def _initialize_data_read_from_adls(self):
         self.permission_df = self.dataframe_from_adls_file_path(
-            "permissions/permissions_20240606_152305.csv", process_in_memory=True,
+            "permissions/permissions.csv", process_in_memory=True,
             adls_connection=self.auth_adls_conn)
         self.roles_df = self.dataframe_from_adls_file_path(
-            "role_permissions/role_permissions_20240606_152307.csv", process_in_memory=True,
+            "role_permissions/role_permissions.csv", process_in_memory=True,
             adls_connection=self.auth_adls_conn)
 
 

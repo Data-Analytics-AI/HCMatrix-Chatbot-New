@@ -1,2 +1,2 @@
 id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
-166,2012-06-17 23:46:25,100000.0,part-time,on-site,5,422,53,2012-06-17 23:46:25,2012-12-17 23:46:25,2012-12-17 23:46:25,,54,,direct-salary,,monthly
+166,2012-06-17 23:46:25,100000.0,part-time,on-site,5,422,53,2012-06-17 23:46:25,2012-12-17 23:46:25,2012-12-17 23:46:25,449.0,54.0,,direct-salary,,monthly

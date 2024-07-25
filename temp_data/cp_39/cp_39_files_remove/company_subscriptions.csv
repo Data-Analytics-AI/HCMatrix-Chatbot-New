@@ -1,2 +1,0 @@
-id,companyId,isActive,isFreeTrial,autoRenew,billingCycle,priceType,startDate,endDate,licensedEmployeeCount,unlicensedEmployeeCount,deactivatedEmployeeCount,discountId,vatId
-109,39,1,1,0,monthly,ngn,2024-04-30 16:36:43,2024-05-30 16:36:43,5,5,0,,

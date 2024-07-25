@@ -51,3 +51,6 @@ id,dob,gender,phoneNumber,eligibility,maritalStatus,nationality,addressId,employ
 313,1990-01-23,male,08106789012,citizen,married,nigeria,,448,53,,,faith@gomayah.com,08106789012,76078901234,36.0
 314,1979-06-13,female,09047890123,citizen,widowed,nigeria,,449,53,,,favour@gomayah.com,09047890123,87089012345,36.0
 315,1991-03-07,male,08029012345,citizen,single,nigeria,,450,53,,,henry@gomayah.com,08029012345,98012345678,36.0
+317,1996-11-25,male,08000000010,citizen,single,nigeria,,528,53,,,esther@bidautomate.com,09041234567,12345678901,36.0
+318,1997-10-27,female,08154567890,citizen,single,nigeria,,529,53,,,adedayo@bidautomate.com,0802234 5678,23456789012,36.0
+319,1998-10-27,female,234-08063027242,citizen,married,nigeria,303.0,530,53,,,ijeoma@bidautomate.com,-undefined,34567890123,36.0

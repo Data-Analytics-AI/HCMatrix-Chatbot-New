@@ -1,2 +1,2 @@
 id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
-124,2024-03-25 23:46:25,100000.0,contract,on-site,3,391,53,2024-03-25 23:46:25,2024-09-25 23:46:25,2024-09-25 23:46:25,,52,,direct-salary,,monthly
+124,2024-03-25 23:46:25,100000.0,contract,on-site,3,391,53,2024-03-25 23:46:25,2024-09-25 23:46:25,2024-09-25 23:46:25,416.0,52.0,,direct-salary,,monthly

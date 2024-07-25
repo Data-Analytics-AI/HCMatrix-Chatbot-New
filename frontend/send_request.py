@@ -1,33 +1,28 @@
 
 import requests
-import json
 
-def chat_endpoint(user_query, employee_metadata):
+
+def chat_endpoint(employee_metadata, user_query=None, audio_file=None):
     url = "http://0.0.0.0:5000/chat"
 
-    # payload = json.dumps({
-    #     "user_query": "kedu",
-    #     "query_type": "general",
-    #     "employee_metadata": {
-    #         "user_departement_id": 43,
-    #         "user_role_id": "323",
-    #         "user_group_id": "54",
-    #         "company_id": "53",
-    #         "employee_id": "373"
-    #     }
-    #     })
-
-    payload = json.dumps(
-        {
-            "user_query": user_query,
-            # "query_type": query_type,
-            "employee_metadata": employee_metadata
-        }
-    )
-    headers = {
-        'Content-Type': 'application/json'
+    payload = {
+        "user_query": user_query,
+        **employee_metadata
     }
 
-    response = requests.request("POST", url, headers=headers, data=payload)
+    files = [
+        ('audio',(audio_file.split("/")[-1].split(".")[0],open(audio_file, 'rb'),'audio/wav'))
+    ] if audio_file else None
+
+    response = requests.request("POST", url, data=payload, files=files)
     json_resp = response.json()
     return json_resp
+
+if __name__ == "__main__":
+    payload = {'department_id': '43',
+        'role_id': '323',
+        'group_id': '54',
+        'company_id': '53',
+        'id': '372'}
+    
+    print (chat_endpoint(payload, audio_file='/home/alijoe/Downloads/record.wav'))

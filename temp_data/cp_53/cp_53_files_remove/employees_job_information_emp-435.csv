@@ -1,2 +1,2 @@
 id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
-179,2018-10-28 23:46:25,100000.0,full-time,hybrid,5,435,53,2018-10-28 23:46:25,2019-04-28 23:46:25,2019-04-28 23:46:25,,52,,direct-salary,,monthly
+179,2018-10-28 23:46:25,100000.0,full-time,hybrid,5,435,53,2018-10-28 23:46:25,2019-04-28 23:46:25,2019-04-28 23:46:25,420.0,52.0,,direct-salary,,monthly

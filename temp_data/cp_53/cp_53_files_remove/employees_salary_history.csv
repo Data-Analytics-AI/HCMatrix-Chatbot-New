@@ -52,3 +52,7 @@ id,type,frequency,employeeId,monthlyGross,hourlyRate,from,to,companyId
 191,direct-salary,monthly,449,100000.0,,2024-05-29 10:19:55,,53
 192,direct-salary,monthly,450,100000.0,,2024-05-29 10:19:55,,53
 195,direct-salary,monthly,468,1000000.0,,2024-05-30 13:41:30,,53
+199,direct-salary,monthly,528,1077174.0,,2024-06-25 17:05:08,,53
+200,direct-salary,monthly,529,1077174.0,,2024-06-25 17:05:09,,53
+201,direct-salary,monthly,530,1077174.0,,2024-06-25 17:05:10,2024-06-26 08:36:17,53
+202,direct-salary,monthly,530,1077174.0,,2024-06-26 08:36:17,,53

@@ -1,2 +1,2 @@
 id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
-162,2021-12-06 23:46:25,100000.0,contract,remote,3,417,53,2021-12-06 23:46:25,2022-06-06 23:46:25,2022-06-06 23:46:25,,54,,direct-salary,,monthly
+162,2021-12-06 23:46:25,100000.0,contract,remote,3,417,53,2021-12-06 23:46:25,2022-06-06 23:46:25,2022-06-06 23:46:25,420.0,54.0,,direct-salary,,monthly

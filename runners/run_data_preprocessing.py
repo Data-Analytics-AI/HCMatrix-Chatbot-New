@@ -21,7 +21,7 @@ def establish_connections():
 def create_company_root_dir(data_root_dir: str, company_id: str) -> str:
     company_root_dir = os.path.join(data_root_dir, f"cp_{company_id}")
     if not os.path.exists(company_root_dir):
-        os.mkdir(company_root_dir)
+        os.makedirs(company_root_dir)
     return company_root_dir
 
 
@@ -55,7 +55,7 @@ def execute(company_id: str, utils_conn, auth_conn):
         )
 
 if __name__ == "__main__":
-    company_id = "39"
+    company_id = "53"
 
     auth_conn, utils_conn = establish_connections()
     execute(company_id, utils_conn, auth_conn)

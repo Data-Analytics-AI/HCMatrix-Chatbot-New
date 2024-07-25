@@ -6,3 +6,4 @@ id,name,label,type,lastModifiedById,companyId,deletedAt
 62,Line Manager - Hr Approval,line-manager-hr-approval,basic,372,53,
 63,Line Manager - Finance Approvals,line-manager-finance-approvals,basic,372,53,
 65,Payroll Approval,payroll-approval,basic,372,53,
+80,Line Manager Approval,line-manager-approval,basic,372,53,

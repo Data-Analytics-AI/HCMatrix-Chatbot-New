@@ -44,5 +44,6 @@ class DataLoaders:
             download = file_client.download_file()
             io_file_object = io.BytesIO(download.readall())
             df = pd.read_csv(io_file_object, usecols=lambda col: col not in self.cols_to_exclude)
-            save_file_name = f"{'_'.join(file_path.split('/')[-1].split('_')[:-3])}.csv"
+            # save_file_name = f"{'_'.join(file_path.split('/')[-1].split('_')[:-3])}.csv"
+            save_file_name = file_path.split('/')[-1]
             df.to_csv(os.path.join(save_path, save_file_name), index=False)
