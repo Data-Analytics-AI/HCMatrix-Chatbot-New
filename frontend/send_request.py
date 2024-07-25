@@ -1,28 +1,19 @@
 
 import requests
+import json
 
+def chat_endpoint(user_query, employee_metadata, audio):
 
-def chat_endpoint(employee_metadata, user_query=None, audio_file=None):
-    url = "http://0.0.0.0:5000/chat"
+    url = "http://0.0.0.0:5500/chat"
 
-    payload = {
-        "user_query": user_query,
-        **employee_metadata
-    }
+    payload = json.dumps({
+        "user_query": f"{user_query}",
+        "audio": audio,
+        "employee_metadata": employee_metadata
+    })
 
-    files = [
-        ('audio',(audio_file.split("/")[-1].split(".")[0],open(audio_file, 'rb'),'audio/wav'))
-    ] if audio_file else None
+    headers = {'Content-Type': 'application/json'}
 
-    response = requests.request("POST", url, data=payload, files=files)
+    response = requests.request("POST", url, headers=headers, data=payload)
     json_resp = response.json()
     return json_resp
-
-if __name__ == "__main__":
-    payload = {'department_id': '43',
-        'role_id': '323',
-        'group_id': '54',
-        'company_id': '53',
-        'id': '372'}
-    
-    print (chat_endpoint(payload, audio_file='/home/alijoe/Downloads/record.wav'))

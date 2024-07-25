@@ -103,7 +103,7 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
                     raise HTTPException(status_code=500, details="Error in generation audio response")
             
             print("pringer")
-            local_ip = "http://127.0.0.1:5000"
+            local_ip = "http://127.0.0.1:5500"
 
             # Generate output mmetadata
             current_time = time.localtime()
@@ -114,7 +114,7 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
                 "question": request_model.user_query,
                 "answer": response, 
                 "timestamp": current_time_str,
-                "audio": f"{local_ip}/download_audio/?file=response_audio_{response_id}.wav",
+                "audio": f"{local_ip}/download_audio/?file=response_audio_{response_id}.wav" if request_model.audio else "",
                 "request_id": response_id
             }
 

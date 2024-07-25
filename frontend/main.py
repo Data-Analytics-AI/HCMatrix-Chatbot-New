@@ -21,27 +21,12 @@ with st.expander("## **HCMatrix Chatbot**"):
     elif company_id == "39":
         employee_id = st.radio("Select a dummy employee id", ["329", "341"], index=0)
 
+    audio = st.radio("To get output as audio", ["True", "False"], index=1)
+
     user_input = st.text_area("Enter query here:")
 
-    recorded_audio = None
-
-    def audio_recorder_callback(audio_frame):
-        nonlocal recorded_audio
-        recorded_audio = audio_frame.to_ndarray()
-
-    webrtc_ctx = webrtc_streamer(
-        key="audio",
-        mode=WebRtcMode.SENDONLY,
-        client_settings=ClientSettings(
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
-            media_stream_constraints={"audio": True, "video": False},
-        ),
-        audio_frame_callback=audio_recorder_callback,
-        async_processing=True,
-    )
-
     employee_metadata = {
-        "departement_id": "43",
+        "department_id": "43",
         "role_id": "323",
         "group_id": "54",
         "company_id": company_id,
@@ -50,17 +35,11 @@ with st.expander("## **HCMatrix Chatbot**"):
 
     if st.button("Send"):
         with st.spinner("Querying the model for the best answer... Sip a cuppa tea 🤗"):
-            if recorded_audio is not None:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_audio_file:
-                    temp_audio_file.write(recorded_audio)
-                    temp_audio_file.flush()
-                    print (temp_audio_file.name)
-                    print ()
-                    bot_response = chat_endpoint(user_input, employee_metadata, temp_audio_file.name)
-            else:
-                bot_response = chat_endpoint(user_input, employee_metadata)
+            bot_response = chat_endpoint(user_input, employee_metadata, bool(audio))
 
-            bot_response = chat_endpoint(user_input, employee_metadata)
+            if bool(audio):
+                st.markdown("#### Audio Response: \n")
+                st.audio(bot_response['audio'])
             print (bot_response)
             print ()
             print ()
@@ -68,6 +47,3 @@ with st.expander("## **HCMatrix Chatbot**"):
 
             st.markdown("#### Answer: \n")
             st.markdown(summary)
-
-            if st.button("Copy to Clipboard"):
-                pyperclip.copy(bot_response)
