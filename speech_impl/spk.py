@@ -14,11 +14,14 @@ class HCMSpeechOut:
         
         
         # self.audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True) # NOTE: you can use audio in a vm.
+        # self.audio_config = speechsdk.audio.AudioOutputConfig(filename="audio.txt")
+        # self.out_audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
+        # self.speech_recognizer = speechsdk.SpeechRecognizer(speech_config=self.speech_config, audio_config=self.audio_config)
+
+    def recognize_from_microphone(self):
         self.audio_config = speechsdk.audio.AudioOutputConfig(filename="audio.txt")
         self.out_audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
         self.speech_recognizer = speechsdk.SpeechRecognizer(speech_config=self.speech_config, audio_config=self.audio_config)
-
-    def recognize_from_microphone(self):
 
         print("Speak into your microphone.")
         speech_recognition_result = self.speech_recognizer.recognize_once_async().get()
