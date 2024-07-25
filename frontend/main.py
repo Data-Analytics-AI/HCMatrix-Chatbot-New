@@ -1,9 +1,7 @@
 
 import streamlit as st
 import pyperclip
-import tempfile
 from send_request import chat_endpoint
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, ClientSettings
 
 # Streamlit UI components
 st.set_page_config(layout="wide")
