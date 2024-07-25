@@ -13,7 +13,8 @@ class HCMSpeechOut:
         self.speech_config.speech_recognition_language="en-US"
         
         
-        self.audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
+        # self.audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True) # NOTE: you can use audio in a vm.
+        self.audio_config = speechsdk.audio.AudioOutputConfig(filename="audio.txt")
         self.out_audio_config = speechsdk.audio.AudioOutputConfig(use_default_speaker=True)
         self.speech_recognizer = speechsdk.SpeechRecognizer(speech_config=self.speech_config, audio_config=self.audio_config)
 
