@@ -1,27 +1,24 @@
 
-from fastapi import FastAPI, HTTPException, status, File, Form, UploadFile, Depends
-import azure.cognitiveservices.speech as speechsdk
-from fastapi.responses import FileResponse
-#from rag_engine.pinecone_ import PineconeDB
-#from rag_engine.emdedder import EmbedChunks
-from pathlib import Path
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, status
 from typing import *
-import aiofiles
 import uuid
-import json
+import copy
 import time
 import os
-import io
 
 from speech_impl import spk
 from model.azure_oai import AzureOAI
+#from rag_engine.emdedder import EmbedChunks
+#from rag_engine.pinecone_ import PineconeDB
 # from rag_engine.retriever_ import Retriever
+from services.cosmos_service import CosmosClient
 from hcm_chatbot.router import chatbot_entry_execution
-from api.schema import AudioChatSchema, EmployeeMetadataSchema, ChatResponseSchema, ChatSchema
-from fastapi.responses import StreamingResponse, JSONResponse
+from api.schema import AudioChatSchema, ChatResponseSchema, ChatHistory
 
 ### ===================== Initialize model and embeddings ====================
 ## ===========================================================================
+
 
 azure_oai_conn = AzureOAI("4O")
 llm_4O = azure_oai_conn()
@@ -33,69 +30,25 @@ speech_out = spk.HCMSpeechOut()
 # index = pineconedb.index
 # retriever = Retriever(index, embedding_query)
 
+app = FastAPI()
 
 
 ### ===================== Initialize API =================================
 ## =======================================================================
 
-def save_to_json(json_path: str, data: Dict[str, str]):
-    with open(json_path, "a+") as fle:
-        fle.write(json.dumps(data))
-        fle.write("\n")
-
-async def save_audio(file: UploadFile, filename: str):
-    async with aiofiles.open(filename, 'wb') as out_file:
-        content = await file.read()
-        await out_file.write(content)
-
-
-app = FastAPI()
-
 print ("Initializing API....")
 @app.get("/", status_code=status.HTTP_200_OK)
 def home():
-    return {"status": "HCMatrix Chatbot is up! Endpoints are `/chat` and `/update_db`."}
+    return {"status": "HCMatrix Chatbot is up! Endpoints are `/chat` and `/chat-history`."}
 
 @app.post("/chat", status_code=status.HTTP_200_OK, response_model=ChatResponseSchema)
 async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
-# async def chatbot(
-#     request_model: ChatSchema = Depends(),
-#     audio: UploadFile | None = None
-# ) -> ChatResponseSchema:
-
-# @app.post("/chat", status_code=status.HTTP_200_OK, response_model=ChatResponseSchema)
-# async def chatbot(
-#     user_query: str = Form(None),
-#     department_id: str = Form(...),
-#     role_id: str = Form(...),
-#     group_id: str = Form(...),
-#     company_id: str = Form(...),
-#     id: str = Form(...),
-#     audio: UploadFile = File(None)
-# ) -> ChatResponseSchema:
-    
-    # employee_metadata = EmployeeMetadataSchema(
-    #     department_id=department_id,
-    #     role_id=role_id,
-    #     group_id=group_id,
-    #     company_id=company_id,
-    #     id=id)
 
     for _ in range(2):
         try:
             response_id = str(uuid.uuid4())
             audio_response_data = None
-            # if request_model.audio:
-                
-            #     filename = f"temp_{audio.filename}"
-            #     await save_audio(audio, filename)
 
-            #     user_query = await speech_out.recognize_from_filepath(filename)
-            #     os.remove(filename)
-            #     if user_query == "ERRPR":
-            #         return {"detail": "No Speech detected!"}
-
-            # response = "Hello there"
             response = chatbot_entry_execution(request_model.user_query, request_model.employee_metadata, llm_4O)
             if request_model.audio: # remove this line if you wish to synthesis text from audio and user box
                 audio_response_data = await speech_out.synthesize_english_to_filepath(response, response_id)
@@ -103,6 +56,7 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
                     raise HTTPException(status_code=500, details="Error in generation audio response")
             
             local_ip = "http://48.217.20.68:5000"
+            # local_ip = "http://127.0.0.1:5500"
 
             # Generate output mmetadata
             current_time = time.localtime()
@@ -114,10 +68,13 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
                 "answer": response, 
                 "timestamp": current_time_str,
                 "audio": f"{local_ip}/download_audio/?file=response_audio_{response_id}.wav" if request_model.audio else "",
-                "request_id": response_id
+                "request_id": response_id,
+                "chat_id": request_model.chat_id
             }
 
-            save_to_json(os.path.join(os.getcwd(), "query_data.json"), response_data)
+            with CosmosClient(database_name="hcm-chatbot", collection_name="user-chat") as client:
+                client.insert_one(copy.deepcopy(response_data))
+
             return JSONResponse(content=response_data)
             # if audio_response_data: # return streaming audio
             #     return StreamingResponse(io.BytesIO(audio_response_data), media_type="audio/wav", headers=response_data)
@@ -134,3 +91,18 @@ async def download_audio_file(file: str):
         raise HTTPException(status_code=404, detail="File not found")
     
     return FileResponse(path=file, media_type="audio/mpeg")
+
+
+@app.get("/chat-history", status_code=status.HTTP_200_OK)
+def fetch_chat_id(request_model: ChatHistory) -> List[ChatResponseSchema]:
+    
+    query = {
+        "chat_id": request_model.chat_id,
+        "employee_metadata.id": request_model.employee_id,
+        "employee_metadata.company_id": request_model.company_id
+    }
+
+    with CosmosClient(database_name="hcm-chatbot", collection_name="user-chat") as client:
+        chat_history_pymongo = client.fetch_many(query)
+        chat_history = [history for history in chat_history_pymongo]
+        return chat_history

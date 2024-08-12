@@ -26,7 +26,8 @@ class AzureOAI:
                 api_version         =azure_oai_credentials["4O_API_VERSION"],
                 azure_deployment    =azure_oai_credentials["4O_AZURE_DEPLOYMENT"],
                 model               =azure_oai_credentials["4O_MODEL_NAME"],
-                model_version       =azure_oai_credentials["4O_MODEL_VERSION"]
+                model_version       =azure_oai_credentials["4O_MODEL_VERSION"],
+                streaming=True
             )
             
             return llm_4o
@@ -37,7 +38,8 @@ class AzureOAI:
                 model_name       =azure_oai_credentials["MODEL_NAME"],
                 api_version      =azure_oai_credentials["API_VERSION"],
                 azure_deployment =azure_oai_credentials["AZURE_DEPLOYMENT"],
-                temperature      =1
+                temperature      =1,
+                streaming=True
             )
 
             return llm

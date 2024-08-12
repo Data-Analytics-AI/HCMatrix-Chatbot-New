@@ -48,12 +48,12 @@ def execute(company_id: str, employee_id: str, query: str, llm_4O: AzureChatOpen
         [
             ("system", "You are an AI assistant developed by Snapnet for various organization use, you're capable of giving response \
     to any questions related to an orginization within HCMatrix. These questions ranges from HR ploicy, leave policies, workflows,\
-    etc and individual employee data. If you can't find the answer simply give a succint answer and don't talk about the strucutre \
-    of the database. Only provide the employee with the needed information \
+    etc and individual employee data. Don't talk about the strucutre of the database or how you arrived at your answer.\
     You're currently conversing with employee id `{employee_id}`"),
             ("user", "{user_query}.")
         ]
     )
+    # If you can't find the answer simply give a succint answer and only provide the employee with the needed information \
     
     agent_response = agent_executor.invoke(
         query_promt.format(employee_id= employee_id, user_query=query)

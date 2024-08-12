@@ -12,6 +12,7 @@ class EmployeeMetadataSchema(BaseModel):
 
 class AudioChatSchema(BaseModel):
     user_query: str = None
+    chat_id: str = None
     audio: bool = None
     employee_metadata: EmployeeMetadataSchema
 
@@ -26,3 +27,8 @@ class ChatResponseSchema(BaseModel):
     audio_response:str = None
     timestamp: str
     request_id: str
+
+class ChatHistory(BaseModel):
+    chat_id: str
+    employee_id: str
+    company_id: str
