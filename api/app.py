@@ -67,7 +67,7 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
                 "question": request_model.user_query,
                 "answer": response, 
                 "timestamp": current_time_str,
-                "audio": f"{local_ip}/download_audio/?file=response_audio_{response_id}.wav" if request_model.audio else "",
+                "audio": f"{local_ip}/download_audio/?file={audio_response_data}" if request_model.audio else "",
                 "request_id": response_id,
                 "chat_id": request_model.chat_id
             }

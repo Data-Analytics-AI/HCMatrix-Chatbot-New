@@ -1,7 +1,10 @@
 
 import azure.cognitiveservices.speech as speechsdk
-import time
+import os
 
+audio_path = os.path.join(os.getcwd(), "audios")
+if not os.path.exists(audio_path):
+    os.mkdir(audio_path)
 
 key = "69c5af99c15547eaa10f4fef81c17317"
 region = "eastus"
@@ -106,7 +109,7 @@ class HCMSpeechOut:
 
     async def synthesize_english_to_filepath(self, text, response_id):
         self.speech_config.speech_synthesis_voice_name = "en-US-EmmaNeural"
-        audio_response_path = f"response_audio_{response_id}.wav"
+        audio_response_path = os.path.join(audio_path, f"response_audio_{response_id}.wav")
 
         audio_config = speechsdk.audio.AudioOutputConfig(filename=audio_response_path)
         speech_synthesizer = speechsdk.SpeechSynthesizer(speech_config=self.speech_config, audio_config=audio_config)
