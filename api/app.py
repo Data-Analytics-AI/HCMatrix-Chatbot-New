@@ -34,7 +34,8 @@ speech_out = spk.HCMSpeechOut()
 app = FastAPI()
 origins = [
     "http://48.217.20.68:5000",
-    "http://127.0.0.1:5000"
+    "http://127.0.0.1:5000",
+    "http://localhost:3000"
 ]
 
 app.add_middleware(
