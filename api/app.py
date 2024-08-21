@@ -1,6 +1,7 @@
 
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from typing import *
 import uuid
 import copy
@@ -31,6 +32,18 @@ speech_out = spk.HCMSpeechOut()
 # retriever = Retriever(index, embedding_query)
 
 app = FastAPI()
+origins = [
+    "http://48.217.20.68:5000",
+    "http://127.0.0.1:5000"
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins, #["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 ### ===================== Initialize API =================================

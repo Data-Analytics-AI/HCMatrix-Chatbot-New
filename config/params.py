@@ -9,6 +9,10 @@ params_config = {
 }
 
 credentials_config = {
+    "speech_service": {
+        "key": "69c5af99c15547eaa10f4fef81c17317"
+    },
+    
     "adls_credentials": {
         "account_name": 'transformedhcmatrixadls',
         "client_id": "9dc4d7f9-1edb-484c-bb91-be1e0673e9fc",

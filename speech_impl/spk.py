@@ -1,18 +1,16 @@
 
 import azure.cognitiveservices.speech as speechsdk
+from config.params import credentials_config as cc
 import os
 
 audio_path = os.path.join(os.getcwd(), "audios")
 if not os.path.exists(audio_path):
     os.mkdir(audio_path)
 
-key = "69c5af99c15547eaa10f4fef81c17317"
-region = "eastus"
-
 class HCMSpeechOut:
 
     def __init__(self) -> None:
-        self.speech_config = speechsdk.SpeechConfig(subscription=key, region=region)
+        self.speech_config = speechsdk.SpeechConfig(subscription=cc["speech_service"]["key"], region="eastus")
         self.speech_config.speech_recognition_language="en-US"
         
         

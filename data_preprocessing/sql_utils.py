@@ -59,3 +59,7 @@ def print_tables(database_path):
         print(table[0])
     
     conn.close()
+
+
+if __name__ == "__main__":
+    print_tables("/home/alijoe/Downloads/thehcmsnapnetsolutionsdb.sql")
