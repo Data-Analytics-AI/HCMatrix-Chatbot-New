@@ -1,6 +1,6 @@
 
 from fastapi.responses import FileResponse, JSONResponse
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import *
 import uuid
@@ -108,12 +108,17 @@ async def download_audio_file(file: str):
 
 
 @app.get("/chat-history", status_code=status.HTTP_200_OK)
-def fetch_chat_id(request_model: ChatHistory) -> List[ChatResponseSchema]:
+# def fetch_chat_id(request_model: ChatHistory) -> List[ChatResponseSchema]:
+def fetch_chat_id(
+    chat_id: str = Query(..., description="Chat ID from FE"),
+    employee_id: str = Query(..., description="Employee ID to retrieve chat history from"),
+    company_id: str = Query(..., description="Employee company Id")
+) -> List[ChatResponseSchema]:
     
     query = {
-        "chat_id": request_model.chat_id,
-        "employee_metadata.id": request_model.employee_id,
-        "employee_metadata.company_id": request_model.company_id
+        "chat_id": chat_id,
+        "employee_metadata.id": employee_id,
+        "employee_metadata.company_id": company_id
     }
 
     with CosmosClient(database_name="hcm-chatbot", collection_name="user-chat") as client:
