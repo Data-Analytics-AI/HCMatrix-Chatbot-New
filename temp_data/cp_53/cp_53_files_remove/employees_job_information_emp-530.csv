@@ -1,2 +1,0 @@
-id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
-203,2023-04-22 00:00:00,1077174.0,full-time,on-site,5,530,53,2023-04-22 00:00:00,2023-10-22 00:00:00,2023-10-23 00:00:00,528.0,50.0,35.0,direct-salary,,monthly

@@ -1,2 +1,0 @@
-id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
-130,2012-01-20 23:46:25,100000.0,contract,on-site,3,397,53,2012-01-20 23:46:25,2012-07-20 23:46:25,2012-07-20 23:46:25,398.0,52.0,,direct-salary,,monthly

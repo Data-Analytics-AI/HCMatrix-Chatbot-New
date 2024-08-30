@@ -1,3 +1,0 @@
-id,companyId,isActive,isFreeTrial,autoRenew,billingCycle,priceType,startDate,endDate,licensedEmployeeCount,unlicensedEmployeeCount,deactivatedEmployeeCount,discountId,vatId
-130,53,0,1,0,monthly,ngn,2024-05-27 12:08:40,2024-06-26 12:08:40,5,5,0,,
-137,53,1,0,0,monthly,ngn,2024-06-26 09:04:58,2024-07-26 09:04:58,500,500,18,,1.0

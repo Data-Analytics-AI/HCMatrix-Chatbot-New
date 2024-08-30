@@ -1,2 +1,0 @@
-id,companyId,email,authorizationCode,authorization
-13,53,snapnetdemo@gmail.com,AUTH_x2kphi7azv,"{""bin"": ""408408"", ""bank"": ""TEST BANK"", ""brand"": ""visa"", ""last4"": ""0409"", ""channel"": ""card"", ""exp_year"": ""2030"", ""reusable"": true, ""card_type"": ""visa "", ""exp_month"": ""01"", ""signature"": ""SIG_1ADyN1cxxzlVhDkaQsBV"", ""account_name"": null, ""country_code"": ""NG"", ""receiver_bank"": null, ""authorization_code"": ""AUTH_x2kphi7azv"", ""receiver_bank_account_number"": null}"

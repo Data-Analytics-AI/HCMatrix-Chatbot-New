@@ -1,2 +1,0 @@
-id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
-165,2022-08-12 23:46:25,100000.0,full-time,remote,5,421,53,2022-08-12 23:46:25,2023-02-12 23:46:25,2023-02-12 23:46:25,393.0,54.0,,direct-salary,,monthly

@@ -3,6 +3,7 @@ import string
 from typing import *
 from langchain_openai import AzureChatOpenAI
 from api.schema import EmployeeMetadataSchema
+from data_preprocessing.gold_layer import GoldLayerUtils
 from hcm_chatbot.rag_chatbot import execute as chatbot_execute
 from hcm_chatbot.sql_chatbot import execute as sql_chatbot_execute
 from hcm_chatbot.layer_1_chatbot import layer_one_agent, layer_one_validator
@@ -29,7 +30,7 @@ def route_user_query(layer_one_answer:str, layer_one_query: str, llm_4o: AzureCh
     #         return "Query Database Further"
 
 
-def chatbot_entry_execution(user_query: str, employee_metadata: EmployeeMetadataSchema, llm_4o: AzureChatOpenAI) -> str:
+def chatbot_entry_execution(user_query: str, employee_metadata: EmployeeMetadataSchema, llm_4o: AzureChatOpenAI, gold_adls_conn: GoldLayerUtils) -> str:
     """
     this fuctions routes the user query to a layered route:
     the first route is the db, then external files, then chatgpt.
@@ -64,7 +65,7 @@ def chatbot_entry_execution(user_query: str, employee_metadata: EmployeeMetadata
     sql_aqent_response = sql_chatbot_execute(
         employee_metadata.company_id,
         employee_metadata.id,
-        user_query, llm_4o)
+        user_query, llm_4o, gold_adls_conn)
         
     if sql_aqent_response == "Sorry, couldn't get the best response to your query, kindly reach out to your HR department for the best response to your query or retry.":
         answer = layer_one_agent(user_query, llm_4o)

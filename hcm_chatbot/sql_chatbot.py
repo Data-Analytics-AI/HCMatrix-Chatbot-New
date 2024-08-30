@@ -4,24 +4,25 @@ from config.params import params_config
 from langchain_openai import AzureChatOpenAI
 from langchain_community.utilities import SQLDatabase
 from langchain.prompts.chat import ChatPromptTemplate
+from data_preprocessing.gold_layer import GoldLayerUtils
 from langchain_community.agent_toolkits import create_sql_agent
 #from langchain.agents.agent_toolkits.sql import SQLDatabaseToolkit
 from langchain.agents.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 
 
 
-data_dir = params_config['data_dir']
-def execute(company_id: str, employee_id: str, query: str, llm_4O: AzureChatOpenAI):
+data_dir = "temp_data/" # params_config['data_dir']
+def execute(company_id: str, employee_id: str, query: str, llm_4O: AzureChatOpenAI, gold_adls_conn: GoldLayerUtils):
 
     company_data_dir = os.path.join(data_dir, f"cp_{company_id}")
     print (company_data_dir)
-    if not os.path.exists(company_data_dir):
-        raise NotImplementedError("The company database is yet to be implemented or does not exist.")
+    # if not os.path.exists(company_data_dir):
+    #     raise NotImplementedError("The company database is yet to be implemented or does not exist.")
     
     company_sql_dir = os.path.join(company_data_dir, f"cp_{company_id}_sql")
     employee_sql_db = os.path.join(company_sql_dir, f"emp_{employee_id}_sql_db.db")
-    if not os.path.exists(employee_sql_db):
-        raise NotImplementedError("The employee database is yet to be implemented or does not exist.")
+    # if not os.path.exists(employee_sql_db):
+    #     raise NotImplementedError("The employee database is yet to be implemented or does not exist.")
 
     #################################################################
     ############# There's a bug from line 29 to 38 ##################
@@ -32,7 +33,10 @@ def execute(company_id: str, employee_id: str, query: str, llm_4O: AzureChatOpen
     ############## should at least reduce the latency.  #############
     ###################### Damn this is huge ########################
 
-    employee_db = SQLDatabase.from_uri(f"sqlite:///{employee_sql_db}")
+    # employee_db = SQLDatabase.from_uri(f"sqlite:///{employee_sql_db}")
+    sql_db = gold_adls_conn.read_file_from_adls(employee_sql_db)
+    employee_db = SQLDatabase.from_uri(f"sqlite:///{sql_db}")
+
     toolkit = SQLDatabaseToolkit(db=employee_db, llm=llm_4O)
     toolkit.get_tools()
 

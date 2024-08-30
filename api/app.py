@@ -13,8 +13,10 @@ from model.azure_oai import AzureOAI
 #from rag_engine.emdedder import EmbedChunks
 #from rag_engine.pinecone_ import PineconeDB
 # from rag_engine.retriever_ import Retriever
+from config.params import credentials_config
 from services.cosmos_service import CosmosClient
 from hcm_chatbot.router import chatbot_entry_execution
+from data_preprocessing.gold_layer import GoldLayerUtils
 from api.schema import AudioChatSchema, ChatResponseSchema, ChatHistory
 
 ### ===================== Initialize model and embeddings ====================
@@ -25,6 +27,13 @@ azure_oai_conn = AzureOAI("4O")
 llm_4O = azure_oai_conn()
 
 speech_out = spk.HCMSpeechOut()
+
+# initialize connection with DB to read employee sql files
+adls_credentials_params     = credentials_config['adls_credentials']
+gold_container_name         = credentials_config['adls_credentials']['goldlayer_container_name']
+gold_account_name           = credentials_config['adls_credentials']['goldlayer_account_name']
+gold_adls_conn  = GoldLayerUtils(gold_container_name, adls_credentials_params, gold_account_name)
+
 # embedding_query = EmbedChunks().embedding_query
 # pineconedb = PineconeDB()
 
@@ -34,6 +43,8 @@ speech_out = spk.HCMSpeechOut()
 app = FastAPI()
 origins = [
     "http://48.217.20.68:5000",
+    "https://deploy-preview-301--hcmatrix-saas.netlify.app",
+    "https://hcmatrix-saas.netlify.app/",
     "http://127.0.0.1:5000",
     "http://localhost:3000"
 ]
@@ -63,7 +74,7 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
             response_id = str(uuid.uuid4())
             audio_response_data = None
 
-            response = chatbot_entry_execution(request_model.user_query, request_model.employee_metadata, llm_4O)
+            response = chatbot_entry_execution(request_model.user_query, request_model.employee_metadata, llm_4O, gold_adls_conn)
             if request_model.audio: # remove this line if you wish to synthesis text from audio and user box
                 audio_response_data = await speech_out.synthesize_english_to_filepath(response, response_id)
                 if audio_response_data is None:

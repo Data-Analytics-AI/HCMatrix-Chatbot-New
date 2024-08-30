@@ -62,4 +62,4 @@ def print_tables(database_path):
 
 
 if __name__ == "__main__":
-    print_tables("/home/alijoe/Downloads/thehcmsnapnetsolutionsdb.sql")
+    print_tables("/home/alijoe/Downloads/emp_372_sql_db.db")

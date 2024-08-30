@@ -1,2 +1,0 @@
-id,startDate,monthlyGross,employmentType,workModel,numberOfDaysPerWeek,employeeId,companyId,hireDate,probationEndDate,confirmationDate,lineManagerId,branchId,payGradeId,payrollType,hourlyRate,frequency
-184,2009-05-10 23:46:25,100000.0,full-time,hybrid,5,440,53,2009-05-10 23:46:25,2009-11-10 23:46:25,2009-11-10 23:46:25,,52.0,,direct-salary,,monthly

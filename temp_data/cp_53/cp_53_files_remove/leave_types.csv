@@ -1,9 +1,0 @@
-id,name,label,length,requireReliever,employeesGetAllowance,applicableToCertainGroup,groupId,gender,maritalStatus,employeeStatus,isActive,companyId,typeOfLength
-25,Annual Leave,annual-leave,spillover,0,1,0,,,,confirmed,0,53,dynamic
-26,Maternity Leave,maternity-leave,60,0,1,0,,female,married,confirmed,1,53,fixed
-27,Paternity Leave,paternity-leave,5,1,1,0,,male,married,confirmed,1,53,fixed
-28,Sick Leave,sick-leave,5,0,1,0,,,,,1,53,fixed
-29,Casual Leave,casual-leave,5,0,1,0,,,,probation,1,53,fixed
-30,Study Leave,study-leave,spillover,1,0,0,,,,confirmed,0,53,dynamic
-31,Sabbatical Leave,sabbatical-leave,spillover,1,0,0,,,,confirmed,0,53,dynamic
-32,Compasionate Leave,compasionate-leave,10,1,1,0,,,,,0,53,fixed
