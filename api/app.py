@@ -46,7 +46,7 @@ app = FastAPI()
 origins = [
     "http://48.217.20.68:5000",
     "https://deploy-preview-301--hcmatrix-saas.netlify.app",
-    "https://hcmatrix-saas.netlify.app/",
+    "https://hcmatrix-saas.netlify.app",
     "http://127.0.0.1:5000",
     "http://localhost:3000"
 ]
