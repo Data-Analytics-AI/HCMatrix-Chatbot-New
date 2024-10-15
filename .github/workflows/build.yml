@@ -3,8 +3,8 @@ name: HCM K8S Deployment
 on:
   push:
     branches:
-      - master
-      # - dev
+      # - master
+      - dev
 
 env:
   REGISTRY:  hcmatrixcontainerregistry.azurecr.io
@@ -27,7 +27,7 @@ jobs:
         with:
           node-version: "20"
           cache: "yarn"
-      
+
       - name: Install dependencies
         run: |
           yarn install
@@ -39,14 +39,14 @@ jobs:
           echo "VERSION=$VERSION" >> $GITHUB_ENV
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-      
+
       # QEMU is used automatically by docker buildx to build image
       - name: Setup QEMU for ARM emulation
         uses: docker/setup-qemu-action@v2
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-        
+
       - name: Set up Docker
         uses: azure/docker-login@v1
         with:
@@ -85,7 +85,7 @@ jobs:
       - name: Install dependencies
         run: |
           yarn install
-  
+
       - name: Azure Login
         uses: azure/login@v1
         with:
@@ -105,4 +105,3 @@ jobs:
           cat ./artifacts/.VERSION
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
-  
