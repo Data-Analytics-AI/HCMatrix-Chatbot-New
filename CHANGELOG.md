@@ -1,3 +1,34 @@
+# [1.0.0-dev.14](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.13...v1.0.0-dev.14) (2024-10-15)
+
+
+### Bug Fixes
+
+* audio configurations ([367e0dc](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/367e0dc88b96e3ff68bad71219bfb102291b840f))
+* audio configurations ([7584f56](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/7584f56edac1cbbe48d941e7dc8a0b3406519b0c))
+* change port to 5000 ([dacb563](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/dacb56329874473c4ec15e2f008e96217ba72ed9))
+* change port to 5000 ([9e6bbfc](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/9e6bbfc4099902e6e32407450a6493c3efac00cc))
+* chatbot system prompt ([fbc12a4](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/fbc12a4a5039695fd158e2b7f730369a29921736))
+* FE cors error ([50bf13c](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/50bf13c51a00e8059d1c8ec700b18091568378d8))
+* import label ([bcc66fe](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/bcc66fe2930840dbc1bc7f3ed497c7bb215ff8df))
+
+
+### Features
+
+* added cors origin to api ([991abeb](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/991abeb82f1596483fbec0c6afbadcde6c489e92))
+* added cosmos db imp. and updated codebase ([e39d9e2](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/e39d9e2cb0e5e1b34169e56a2c5689a1dc57075b))
+* added cosmosDB services ([603249e](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/603249e34acbc2f63f7752153f4df7d4893d1352))
+* added installer.sh for automatic installation on staggingDB ([474ea9d](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/474ea9dc2ddbf3b3dd79738ee050cdef4b87f7dc))
+* added minimalistic caching ([0be7505](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/0be750566a7fa00552bda59bd87c5a2592d47063))
+* added nelify url to cors list ([402f426](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/402f426d2a4d2ac84f4791372c8087443b228ca5))
+* added temp data ([ab8a645](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/ab8a645eda6ede7930fa69a1512e0ba9ef1a0a38))
+* added TTS and STT service to API ([a978176](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/a978176305222d7ac054a28749f9ee5b355e9bcd))
+* added TTS and STT service to API ([1a1a697](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/1a1a697800f82617dc8a726be5548ba68a91a297))
+* added TTS to stremlit FE ([a4df2f0](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/a4df2f0c79f0ccfae9e6465146c0005b3c5e1769))
+* changed database to upstream ADLS ([7fb1c1b](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/7fb1c1b34818e947befd403cad0ffe1845853971))
+* clean audio saving .. ([b24dc4f](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/b24dc4f35d27f75e7fba9f62d4c2c424c362b884))
+* implemented gold layer additino to database. ([c7c5a93](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/c7c5a933158f0cc99170612445b5580e0010bd5c))
+* remove branch form build ([de0d967](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/commit/de0d967783f4d5c3d1458f22b179369713b72573))
+
 # [1.0.0-dev.13](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot/compare/v1.0.0-dev.12...v1.0.0-dev.13) (2024-07-12)
 
 
