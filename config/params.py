@@ -15,11 +15,11 @@ credentials_config = {
     
     "adls_credentials": {
         "account_name": "transformedhcmatrixadls1", # 'transformedhcmatrixadls',
-        "client_id": "7d6b30cb-a0db-4eb8-aa94-1deaec9afd9f", # "9dc4d7f9-1edb-484c-bb91-be1e0673e9fc",
-        "client_secret": "URN8Q~WdqtACSyTezgFIKjt8h9qPrT_7qX6Zzdwu", # "qtl8Q~x~tV-aRH~bopRJ.-k7cbLF4Dgsj5bV7aDO",
+        "client_id": "76bd4cdb-7d2c-495a-99ad-ceafd1466644", # "9dc4d7f9-1edb-484c-bb91-be1e0673e9fc",
+        "client_secret": "aX78Q~119W_nQH_rAXactEAZIocZumstt.QxYbGB", # "qtl8Q~x~tV-aRH~bopRJ.-k7cbLF4Dgsj5bV7aDO",
         "tenant_id": "ba130eca-3030-48e1-9089-c979293aeb70", # "ba130eca-3030-48e1-9089-c979293aeb70",
-        "goldlayer_container_name": "goldhcmatrixcontainer",
-        "goldlayer_account_name": "goldstoragehcmatrix1",
+        "goldlayer_container_name": "goldcontainerhcmatrix",
+        "goldlayer_account_name": "goldstoragehcmatrix",
         "stagging_adls_name": "stagingadlshcmatrix1",
     },
 

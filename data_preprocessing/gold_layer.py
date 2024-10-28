@@ -58,6 +58,7 @@ class GoldLayerUtils(ADLSConnection):
             all_uploaded_files.append(file_uploaded)
 
     def read_file_from_adls(self, adls_file_path: str, read_memory: bool = True):
+        print(adls_file_path)
         file_client = self.file_system_client.get_file_client(adls_file_path)
 
         if read_memory:

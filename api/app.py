@@ -49,7 +49,7 @@ origins = [
     "https://hcmatrix-saas.netlify.app",
     "http://127.0.0.1:5000",
     "http://localhost:3000",
-    "https://*.hcmatrix.*"
+    "https://app.hcmatrix.com"
 ]
 
 app.add_middleware(
@@ -110,6 +110,7 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
             #     return JSONResponse(content=response_data)
 
         except Exception as reason:
+            raise
             raise HTTPException(status_code=500, detail=str(reason))
 
 
