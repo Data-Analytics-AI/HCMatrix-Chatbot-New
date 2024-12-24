@@ -38,9 +38,9 @@ with st.expander("## **HCMatrix Chatbot**"):
             if bool(audio):
                 st.markdown("#### Audio Response: \n")
                 st.audio(bot_response['audio'])
-            print (bot_response)
-            print ()
-            print ()
+            print(bot_response)
+            print()
+            print()
             summary = bot_response['answer']
 
             st.markdown("#### Answer: \n")

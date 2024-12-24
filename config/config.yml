@@ -1,0 +1,62 @@
+production:
+
+  local_ip: "http://48.217.20.68:5000"
+
+  params_config:
+    root_dir: "HCMatrix-Chatbot"  # Placeholder for current working directory
+    data_dir: "HCMatrix-Chatbot/temp_data"
+
+  speech_service:
+    key: $speech_service_key
+
+  adls_credentials:
+    account_name: "transformedhcmatrixadls1"
+    client_id: $adls_client_id
+    client_secret: $adls_client_secret
+    tenant_id: $adls_tenant_id
+    goldlayer_container_name: "goldcontainerhcmatrix"
+    goldlayer_account_name: "goldstoragehcmatrixx"
+    stagging_adls_name: "stagingadlshcmatrix1"
+
+  mysql_credentials:
+    auth_db_name: "hcmatrix-authentication-db"
+    utils_db_name: "hcmatrix-utility-db"
+
+  pinecone_credentials:
+    PINECONE_API_KEY: $PINECONE_API_KEY
+    index_name: "xkaggle-rag-project-astra"
+    index_metric: "cosine"
+    specs:
+      cloud: "aws"
+      region: "us-east-1"
+    embedding_dim: 3072
+
+  azure_oai_credentials:
+    AZURE_OPENAI_API_KEY: $AZURE_OPENAI_API_KEY
+    AZURE_OPENAI_ENDPOINT: "https://hcmatrix-openai.openai.azure.com/"
+    4O_API_VERSION: "2024-02-01"
+    4O_AZURE_DEPLOYMENT: "hcmatrix-llm-4o"
+    4O_MODEL_NAME: "gpt-4o"
+    4O_MODEL_VERSION: "2024-05-13"
+    MODEL_NAME: "gpt3.5-turbo-instruct"
+    API_VERSION: "2023-12-01-preview"
+    AZURE_DEPLOYMENT: "hcmatrix-llm"
+    AZURE_EMBEDDING_DEPLOYMENT: "hcmatrix-embeddings"
+    AZURE_EMBEDDING_API_VERSION: "2023-05-15"
+    AZURE_EMBEDDING_API_BASE: "https://hcmatrix-openai.openai.azure.com/openai/deployments/hcmatrix-embeddings/embeddings?api-version=2023-05-15"
+    AZURE_EMBEDDING_API_KEY: $AZURE_EMBEDDING_API_KEY
+
+  vector_db_config:
+    path: '/Users/greatware/Desktop/Snapnet/HCMatrix-Chatbot/vectorstore'
+
+  layer_one_agent_prompt: |
+    You are an AI assistant developed by Snapnet for various organizational uses. 
+    You are capable of answering questions related to an organization within HCMatrix. 
+    These questions range from HR policies, leave policies, workflows, and individual employee data.
+  
+    Use the given context to answer the question. If the context doesn't make sense in regards to the question, 
+    disregard it and provide a general answer. 
+    If you don't know, say you don't know the answer and refer to Snapnet Support at info@snapnetsolutions.com. 
+    Don't give gibberish or out-of-place answers.
+  
+    Context: {context}

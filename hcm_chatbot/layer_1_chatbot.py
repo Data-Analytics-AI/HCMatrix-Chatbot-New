@@ -1,37 +1,59 @@
-
-from langchain.schema import SystemMessage, HumanMessage
+from langchain_community.vectorstores.chroma import Chroma
+from langchain.prompts.chat import ChatPromptTemplate
 from langchain_openai import AzureChatOpenAI
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain_openai.embeddings import AzureOpenAIEmbeddings
+from module.utils import config
+
+# Azure OpenAI Configuration
+
+
+api_key = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_KEY']
+api_base = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_BASE']
+api_version = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_VERSION']
+vector_store_path = config['production']['vector_db_config']['path']
+layer_one_agent_prompt = config['production']['layer_one_agent_prompt']
 
 
 def layer_one_agent(user_query: str, llm_4o: AzureChatOpenAI) -> str:
-    messages = [
-        SystemMessage(
-            # content=(
-            #     "You are an AI assistant developed by Snapnet for various organization use within hcmatrix, your goal as an assistant is to"
-            #     "give prescise anwers to general questions.\n"
-            #     "Any questions relating to employee inoformation, company information, HR ploicy, leave policies, workflows, etc and individual employee kindly responsd "
-            #     "`Invalid Query`.\n"
-            #     "Again, your goal as an assistant is to give answers to real life, questions in general."
-            # )
+    # The implementation below is for chat models
 
-            content=(
-                "You are an AI assistant developed by Snapnet for various organization use, you're capable of giving response,"
-                "any questions related to an orginization within HCMatrix. These questions ranges from HR ploicy, leave policies"
-                "workflows, etc and individual employee data"
+    # Embeddings Setup
+    embedding_model = AzureOpenAIEmbeddings(
+        model="text-embedding-3-large",
+        openai_api_key=api_key,
+        azure_endpoint=api_base,
+        openai_api_version=api_version
+    )
 
-                "Given a specific context, please give a short answer to the question, if the context doesnt make sense in regards "
-                "to the question kindly disregard the context and give a genral answer. if you don't know, kindly say you don't know the answer"
-                "and refer to the Snapnet Support email info@snapnetsolutions.com. "
-                "Don't give gibberish or out of place answers.+"
-            )
-        ),
-        HumanMessage(content=user_query)
-    ]
+    # Step 1: Load the vector store
+    vector_store = Chroma(persist_directory=vector_store_path, embedding_function=embedding_model)
 
-    response = llm_4o.invoke(messages)
-    content = response.content
-    return content
+    # Create the prompt template
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            ("system", layer_one_agent_prompt),
+            ("human", "{input}"),
+        ]
+    )
 
+    # Step 3: Create a retriever
+    retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+
+    # Step 4: Create a RetrievalQA chain
+    question_answer_chain = create_stuff_documents_chain(llm_4o, prompt)
+    rag_chain = create_retrieval_chain(retriever, question_answer_chain)
+
+    print("Moving user query to the RAG layer.")
+
+    response = rag_chain.invoke({"input": user_query})
+    print(response['input'])
+    print('_'*20)
+    print(response['context'])
+    print('_'*20)
+    print(response['answer'])
+    return response['answer']
 
 
 def layer_one_validator(user_query: str, llm_answer: str, llm_4o: AzureChatOpenAI) -> str:
@@ -43,11 +65,9 @@ def layer_one_validator(user_query: str, llm_answer: str, llm_4o: AzureChatOpenA
         Assess the correctness of the answer to the given question.
         if the answer is correct and direct reply `Good` if the answer is Invalid Query or not correct reply `No Good`.
 
-        Note, the answer must be direct and specific to the question, not some suggestions or to-do. If the assistant can't provide the right answer,
-        then it should be a very low correcness score.
-    """
+        Note, the answer must be direct and specific to the question, not some suggestions or to-do. If the assistant 
+        can't provide the right answer, then it should be a very low correctness score."""
 
     response = llm_4o.invoke(prompt)
     content = response.content
     return content
-

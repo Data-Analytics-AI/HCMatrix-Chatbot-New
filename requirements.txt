@@ -18,5 +18,10 @@ azure-cognitiveservices-speech==1.38.0
 aiofiles==24.1.0
 azure-cosmos==4.7.0
 pymongo==4.8.0
+pdfplumber
+opencv-python-headless
+sentence-transformers
+chromadb
+langchain-huggingface
 # nltk==3.8.1
 # scikit-learn==1.5.0

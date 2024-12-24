@@ -1,8 +1,9 @@
-
 from pymongo import MongoClient
 from typing import *
 import warnings
+
 warnings.filterwarnings("ignore")
+
 
 class CosmosClient:
     def __init__(self, database_name, collection_name):
@@ -21,8 +22,10 @@ class CosmosClient:
 
     def _establish_connection(self):
         connection_string = (
-            "mongodb://hcmatrix-cosmos:FQwuYHLYfp3whgnG6tkbCCIzSd17RGcS5LXm6YZbI9CazFjWRVHFoy0sFQjgjiEc5Ya4SzkOajCTACDbiqVKXA=="
-            "@hcmatrix-cosmos.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@hcmatrix-cosmos@"
+            "mongodb://hcmatrix-cosmos"
+            ":FQwuYHLYfp3whgnG6tkbCCIzSd17RGcS5LXm6YZbI9CazFjWRVHFoy0sFQjgjiEc5Ya4SzkOajCTACDbiqVKXA=="
+            "@hcmatrix-cosmos.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb"
+            "&maxIdleTimeMS=120000&appName=@hcmatrix-cosmos@"
         )
         return MongoClient(connection_string)
 
@@ -35,6 +38,6 @@ class CosmosClient:
 
     def fetch_many(self, query):
         return self.collection.find(query)
-    
-    def fetch_one(self, query:Dict={}):
+
+    def fetch_one(self, query: Dict = {}):
         return self.collection.find_one(query)

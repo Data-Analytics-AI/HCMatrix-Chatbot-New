@@ -3,3 +3,6 @@
 __pycache__
 to-do.txt
 suggestions.txt
+.env
+.idea/
+policy_docs/*

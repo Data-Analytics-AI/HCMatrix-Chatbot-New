@@ -1,5 +1,4 @@
 
-
 from langchain_community.utilities import SQLDatabase
 from langchain_community.agent_toolkits import create_sql_agent
 from langchain.agents.agent_toolkits.sql.toolkit import SQLDatabaseToolkit

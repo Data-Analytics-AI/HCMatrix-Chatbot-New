@@ -4,11 +4,11 @@ import uuid
 from typing import *
 from langchain.docstore.document import Document
 from langchain_openai import AzureOpenAIEmbeddings
-
-from config.params import credentials_config
+from module.utils import config
+# from config.params import credentials_config
 from rag_engine.pinecone_ import PineconeDB
 
-azure_oai_credentials = credentials_config['azure_oai_credentials']
+azure_oai_credentials = config['production']['azure_oai_credentials']
 
 os.environ["AZURE_OPENAI_API_KEY"]  = azure_oai_credentials['AZURE_OPENAI_API_KEY']
 os.environ["AZURE_OPENAI_ENDPOINT"] = azure_oai_credentials['AZURE_OPENAI_ENDPOINT']
