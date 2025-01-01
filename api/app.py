@@ -16,6 +16,7 @@ from services.cosmos_service import CosmosClient
 from hcm_chatbot.router import chatbot_entry_execution
 from data_preprocessing.gold_layer import GoldLayerUtils
 from api.schema import AudioChatSchema, ChatResponseSchema, ChatHistory
+from module.log_config import logger
 
 ### ===================== Initialize model and embeddings ====================
 ## ===========================================================================
@@ -76,8 +77,10 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
 
             # attempting to synthesize audio for the above model response
             if request_model.audio:
+                logger.info('Generating user query from audio.')
                 audio_response_data = await speech_out.synthesize_english_to_filepath(response, response_id)
                 if audio_response_data is None:
+                    logger.error("And error occurred. Audio could not be used.")
                     raise HTTPException(status_code=500, detail="Error in generation audio response")
 
             local_ip = config['production']['local_ip']
@@ -97,7 +100,11 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
             }
 
             with CosmosClient(database_name="hcm-chatbot", collection_name="user-chat") as client:
-                client.insert_one(copy.deepcopy(response_data))
+                logger.info("Attempting to store chat history in database")
+                try:
+                    client.insert_one(copy.deepcopy(response_data))
+                except Exception as e:
+                    logger.error(f"Error occurred while attempting to store message history in DB {e}")
 
             return JSONResponse(content=response_data)
 

@@ -15,20 +15,23 @@ api_version = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API
 vector_store_path = config['production']['vector_db_config']['path']
 layer_one_agent_prompt = config['production']['layer_one_agent_prompt']
 
+# Embeddings Setup
+embedding_model = AzureOpenAIEmbeddings(
+    model="text-embedding-3-large",
+    openai_api_key=api_key,
+    azure_endpoint=api_base,
+    openai_api_version=api_version
+)
+
+# Load the vector store
+vector_store = Chroma(persist_directory=vector_store_path, embedding_function=embedding_model)
+
+# Create a retriever
+retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 5})
+
 
 def layer_one_agent(user_query: str, llm_4o: AzureChatOpenAI) -> str:
     # The implementation below is for chat models
-
-    # Embeddings Setup
-    embedding_model = AzureOpenAIEmbeddings(
-        model="text-embedding-3-large",
-        openai_api_key=api_key,
-        azure_endpoint=api_base,
-        openai_api_version=api_version
-    )
-
-    # Step 1: Load the vector store
-    vector_store = Chroma(persist_directory=vector_store_path, embedding_function=embedding_model)
 
     # Create the prompt template
     prompt = ChatPromptTemplate.from_messages(
@@ -38,21 +41,11 @@ def layer_one_agent(user_query: str, llm_4o: AzureChatOpenAI) -> str:
         ]
     )
 
-    # Step 3: Create a retriever
-    retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 5})
-
     # Step 4: Create a RetrievalQA chain
     question_answer_chain = create_stuff_documents_chain(llm_4o, prompt)
     rag_chain = create_retrieval_chain(retriever, question_answer_chain)
 
-    print("Moving user query to the RAG layer.")
-
     response = rag_chain.invoke({"input": user_query})
-    print(response['input'])
-    print('_'*20)
-    print(response['context'])
-    print('_'*20)
-    print(response['answer'])
     return response['answer']
 
 

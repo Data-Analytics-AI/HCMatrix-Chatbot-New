@@ -1,0 +1,10 @@
+adls_client_id=
+adls_client_secret=
+adls_tenant_id=
+
+speech_service_key=
+
+PINECONE_API_KEY=
+
+AZURE_OPENAI_API_KEY=
+AZURE_EMBEDDING_API_KEY=

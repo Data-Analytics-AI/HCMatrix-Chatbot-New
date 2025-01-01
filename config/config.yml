@@ -5,6 +5,7 @@ production:
   params_config:
     root_dir: "HCMatrix-Chatbot"  # Placeholder for current working directory
     data_dir: "HCMatrix-Chatbot/temp_data"
+    log_dir: "/Users/greatware/Desktop/Snapnet/HCMatrix-Chatbot/project_log.log"
 
   speech_service:
     key: $speech_service_key

@@ -6,3 +6,4 @@ suggestions.txt
 .env
 .idea/
 policy_docs/*
+project_log.log

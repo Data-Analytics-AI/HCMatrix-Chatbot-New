@@ -16,13 +16,9 @@ def execute(
         chatbot_cache: LRUCache):
     company_data_dir = os.path.join(data_dir, f"cp_{company_id}")
     print(company_data_dir)
-    # if not os.path.exists(company_data_dir):
-    #     raise NotImplementedError("The company database is yet to be implemented or does not exist.")
 
     company_sql_dir = os.path.join(company_data_dir, f"cp_{company_id}_sql")
     employee_sql_db = os.path.join(company_sql_dir, f"emp_{employee_id}_sql_db.db")
-    # if not os.path.exists(employee_sql_db):
-    #     raise NotImplementedError("The employee database is yet to be implemented or does not exist.")
 
     # Minimalistic cache implementation
     cache_key = f"{company_id}_{employee_id}"
