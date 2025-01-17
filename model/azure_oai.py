@@ -21,8 +21,6 @@ class AzureOAI:
 
         if self.model_type == "4O":
             llm_4o = AzureChatOpenAI(
-                # azure_endpoint    =azure_oai_credentials[""],
-                # api_key           =azure_oai_credentials[""],
                 api_version=azure_oai_credentials["4O_API_VERSION"],
                 azure_deployment=azure_oai_credentials["4O_AZURE_DEPLOYMENT"],
                 model=azure_oai_credentials["4O_MODEL_NAME"],

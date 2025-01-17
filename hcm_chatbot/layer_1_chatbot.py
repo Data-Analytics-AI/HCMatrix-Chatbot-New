@@ -26,11 +26,8 @@ embedding_model = AzureOpenAIEmbeddings(
 # Load the vector store
 vector_store = Chroma(persist_directory=vector_store_path, embedding_function=embedding_model)
 
-# Create a retriever
-retriever = vector_store.as_retriever(search_type="similarity", search_kwargs={"k": 5})
 
-
-def layer_one_agent(user_query: str, llm_4o: AzureChatOpenAI) -> str:
+def layer_one_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id) -> str:
     # The implementation below is for chat models
 
     # Create the prompt template
@@ -40,6 +37,14 @@ def layer_one_agent(user_query: str, llm_4o: AzureChatOpenAI) -> str:
             ("human", "{input}"),
         ]
     )
+
+    # Create a retriever
+    retriever = vector_store.as_retriever(
+        search_type="similarity",
+        search_kwargs={
+            "k": 5,  # Number of results to return
+            "filter": {"company_id": company_id}  # Filter by company_id
+        })
 
     # Step 4: Create a RetrievalQA chain
     question_answer_chain = create_stuff_documents_chain(llm_4o, prompt)

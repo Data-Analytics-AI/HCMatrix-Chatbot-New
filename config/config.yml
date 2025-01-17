@@ -5,13 +5,13 @@ production:
   params_config:
     root_dir: "HCMatrix-Chatbot"  # Placeholder for current working directory
     data_dir: "HCMatrix-Chatbot/temp_data"
-    log_dir: "/home/azureuser/HCMatrix-Chatbot/project_log.log" 
+    log_dir: "/Users/greatware/Desktop/Snapnet/HCMatrix-Chatbot/project_log.log"
 
   speech_service:
     key: $speech_service_key
 
   adls_credentials:
-    account_name: "goldstoragehcmatrixx" # "transformedhcmatrixadls1" 
+    account_name: "transformedhcmatrixadls1"
     client_id: $adls_client_id
     client_secret: $adls_client_secret
     tenant_id: $adls_tenant_id
@@ -48,7 +48,7 @@ production:
     AZURE_EMBEDDING_API_KEY: $AZURE_EMBEDDING_API_KEY
 
   vector_db_config:
-    path: '/home/azureuser/HCMatrix-Chatbot/vectorstore'
+    path: '/Users/greatware/Desktop/Snapnet/HCMatrix-Chatbot/new_vectorstore'
 
   layer_one_agent_prompt: |
     You are an AI assistant developed by Snapnet for various organizational uses. 

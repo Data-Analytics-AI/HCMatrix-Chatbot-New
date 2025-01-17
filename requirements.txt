@@ -21,7 +21,7 @@ pymongo==4.8.0
 pdfplumber
 opencv-python-headless
 sentence-transformers
-chromadb
+chromadb==0.3.29
 langchain-huggingface
 # nltk==3.8.1
 # scikit-learn==1.5.0

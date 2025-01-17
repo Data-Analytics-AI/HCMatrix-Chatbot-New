@@ -65,10 +65,6 @@ class GoldLayerUtils(ADLSConnection):
                 download = file_client.download_file()
                 temp_file.write(download.readall())
                 temp_file_path = temp_file.name
-
-            # conn = sqlite3.connect(temp_file_path)
-            # cur = conn.cursor()
-
             return temp_file_path
 
         else:

@@ -1,68 +1,101 @@
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.schema import Document
 from langchain.vectorstores import Chroma
 from langchain_openai.embeddings import AzureOpenAIEmbeddings
-import pdfplumber
+from azure.storage.blob import BlobClient
+from urllib.parse import urlparse, unquote
+import os
+import uuid
 from module.utils import config
 
 
-def preprocess_pdf_with_local_embeddings(pdf_path, vector_store_path="vectorstore"):
+# Azure OpenAI Configuration
+
+api_key = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_KEY']
+api_base = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_BASE']
+api_version = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_VERSION']
+
+
+def download_pdf_and_chunk_with_metadata(
+        url: str,
+        directory: str,
+        company_id: str = "1",
+        chunk_size: int = 1000,
+        chunk_overlap: int = 100):
     """
-    Extracts text and tables from a PDF, preprocesses them, and stores them in a vector database.
-    Uses a local HuggingFace embedding model for embeddings.
+    Download a PDF from a URL, split it into chunks, and add a company_id and unique chunk_id to the metadata.
 
-    Parameters:
-        pdf_path (str): Path to the PDF file.
-        vector_store_path (str): Path to store the vector database. Defaults to "vectorstore".
-
-    Returns:
-        vector_store (Chroma): A Chroma vector store loaded with embeddings.
+    :param url: URL to the PDF file.
+    :param directory: Local directory to save the PDF.
+    :param company_id: Custom company ID to add to metadata.
+    :param chunk_size: Number of characters per chunk.
+    :param chunk_overlap: Number of overlapping characters between chunks.
+    :return: List of Document objects with updated metadata.
     """
-    # Step 1: Extract text from the PDF
-    loader = PyPDFLoader(pdf_path)
-    documents = loader.load()  # List of documents per page
+    # Create a BlobClient using the URL
+    blob_client = BlobClient.from_blob_url(url)
 
-    # Step 2: Extract tables using pdfplumber
-    table_texts = []
+    # Generate file name from the URL
+    file_name = os.path.basename(urlparse(url).path)
+    file_name = unquote(file_name)
+
+    # Local file path
+    local_file_path = os.path.join(directory, file_name)
+
+    # Download the PDF
     try:
-        with pdfplumber.open(pdf_path) as pdf:
-            for page in pdf.pages:
-                tables = page.extract_tables()  # Extract tables from the page
-                for table in tables:
-                    # Convert each table to a string representation
-                    table_text = "\n".join(["\t".join(row) for row in table if row])
-                    table_texts.append(table_text)
+        with open(local_file_path, "wb") as file:
+            blob_data = blob_client.download_blob()
+            blob_data.readinto(file)
+        print(f"File downloaded successfully as {local_file_path}")
     except Exception as e:
-        print(f"Table extraction failed: {e}")
+        print(f"Error downloading the file: {e}")
+        return []
 
-    # Step 3: Preprocess text and tables
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-    text_chunks = text_splitter.split_documents(documents)  # Split textual data
+    # Load and process the PDF
+    loader = PyPDFLoader(local_file_path)
+    documents = loader.load()
 
-    # Process table data into chunks
-    table_chunks = [{"page_content": table_text} for table_text in table_texts]
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap
+    )
+    chunks = text_splitter.split_documents(documents)
 
-    # Combine text and table chunks
-    all_chunks = text_chunks + table_chunks
+    # Add company_id and unique IDs to metadata
+    updated_chunks = []
+    for chunk in chunks:
+        unique_id = str(uuid.uuid4())
+        updated_metadata = {**chunk.metadata, 'company_id': company_id, 'chunk_id': unique_id}
+        updated_chunk = Document(page_content=chunk.page_content, metadata=updated_metadata)
+        updated_chunks.append(updated_chunk)
 
-    # Step 4: Embed and store in a vector database
-    # Azure OpenAI Configuration
-    api_key = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_KEY']
-    api_base = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_BASE']
-    api_version = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_VERSION']
+    return updated_chunks
 
+
+def store_chunks_in_chromadb(chunks, persist_directory: str):
+    """
+    Store the given chunks in ChromaDB with their metadata.
+
+    :param chunks: List of Document objects with metadata.
+    :param persist_directory: Directory to store ChromaDB.
+    :return: None
+    """
     # Embeddings Setup
     embedding_model = AzureOpenAIEmbeddings(
         model="text-embedding-3-large",
         openai_api_key=api_key,
-        openai_api_base=api_base,
+        azure_endpoint=api_base,
         openai_api_version=api_version
     )
 
-    vector_store = Chroma.from_documents(all_chunks, embedding_model, persist_directory=vector_store_path)
+    vector_store = Chroma.from_documents(
+        documents=chunks,
+        embedding=embedding_model,
+        persist_directory=persist_directory
+    )
 
-    # Persist the vector store
     vector_store.persist()
-    print(f"Vector store saved at: {vector_store_path}")
-    return vector_store
+    print(f"Chunks stored in ChromaDB at {persist_directory} with metadata including company_id and chunk_id.")
 

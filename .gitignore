@@ -7,4 +7,6 @@ suggestions.txt
 .idea/
 policy_docs/*
 project_log.log
-audios/*
+test2.py
+test3.py
+.DS_Store

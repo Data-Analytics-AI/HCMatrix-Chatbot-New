@@ -103,6 +103,7 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
                 logger.info("Attempting to store chat history in database")
                 try:
                     client.insert_one(copy.deepcopy(response_data))
+                    logger.info("Successfully stored chat history in database")
                 except Exception as e:
                     logger.error(f"Error occurred while attempting to store message history in DB {e}")
 

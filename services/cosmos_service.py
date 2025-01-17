@@ -41,3 +41,4 @@ class CosmosClient:
 
     def fetch_one(self, query: Dict = {}):
         return self.collection.find_one(query)
+

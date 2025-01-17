@@ -24,6 +24,7 @@ def execute(
     cache_key = f"{company_id}_{employee_id}"
     cache_data = chatbot_cache.get(cache_key)
     if cache_data == -1:
+        print('No cache available. Pulling from ADLS')
         sql_db = gold_adls_conn.read_file_from_adls(employee_sql_db)
         employee_db = SQLDatabase.from_uri(f"sqlite:///{sql_db}")
 
