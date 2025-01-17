@@ -69,7 +69,6 @@ def execute(
         return ("Sorry, couldn't get the best response to your query, kindly reach out to your HR department for the "
                 "best response to your query or retry.")
     return response
-    # return response["output"]
 
 
 if __name__ == "__main__":
