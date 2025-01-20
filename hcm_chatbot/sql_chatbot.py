@@ -46,7 +46,7 @@ def execute(
                        "giving response to any questions related to an organization within HCMatrix. These "
                        "questions ranges from HR policy, leave policies, workflows, etc and individual employee "
                        "data. Don't talk about the structure of the database or how you arrived at your answer. \n"
-                       "if you can help the user, response with this exact words: \n Sorry, couldn't get the best "
+                       "if you cannot help the user, response with this exact words: \n Sorry, couldn't get the best "
                        "response to your query, kindly reach out to your HR department for the best response to your "
                        "query or retry. \n"
                        "You're currently conversing with employee id `{employee_id}`"),
