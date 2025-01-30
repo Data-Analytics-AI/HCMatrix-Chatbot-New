@@ -37,3 +37,4 @@ Set up monitoring and logging for your Kubernetes cluster and applications to tr
 
 Review the replicas configuration in the deployment manifest and ensure it matches your expected load and availability requirements.
 
+

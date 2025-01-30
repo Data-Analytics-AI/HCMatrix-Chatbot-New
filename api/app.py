@@ -18,8 +18,8 @@ from data_preprocessing.gold_layer import GoldLayerUtils
 from api.schema import AudioChatSchema, ChatResponseSchema, ChatHistory
 from module.log_config import logger
 
-### ===================== Initialize model and embeddings ====================
-## ===========================================================================
+# ===================== Initialize model and embeddings ====================
+# ===========================================================================
 
 # Instantiating an instance of the LLM and Speech Synthesis class.
 azure_oai_conn = AzureOAI("4O")
@@ -53,8 +53,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-### ===================== Initialize API =================================
-## =======================================================================
+# ===================== Initialize API =================================
+# =======================================================================
 
 print("Initializing API....")
 
@@ -95,11 +95,15 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
                 "answer": response,
                 "timestamp": current_time_str,
                 "audio": f"{local_ip}/download_audio/?file={audio_response_data}" if request_model.audio else "",
+                # TODO: 1. Security risk as it exposes the IP of the VM.
+                # TODO: 2. Scalability issue.
+                # TODO: 3. Deployment issues as the code will be running in a docker container.
                 "request_id": response_id,
                 "chat_id": request_model.chat_id
             }
 
             with CosmosClient(database_name="hcm-chatbot", collection_name="user-chat") as client:
+                # TODO: Add async to the with clause for MongoDB connection.
                 logger.info("Attempting to store chat history in database")
                 try:
                     client.insert_one(copy.deepcopy(response_data))
@@ -126,7 +130,6 @@ async def download_audio_file(file: str):
 
 
 @app.get("/chat-history", status_code=status.HTTP_200_OK)
-# def fetch_chat_id(request_model: ChatHistory) -> List[ChatResponseSchema]:
 def fetch_chat_id(
         chat_id: str = Query(..., description="Chat ID from FE"),
         employee_id: str = Query(..., description="Employee ID to retrieve chat history from"),
@@ -138,6 +141,26 @@ def fetch_chat_id(
     """
     query = {
         "chat_id": chat_id,
+        "employee_metadata.id": employee_id,
+        "employee_metadata.company_id": company_id
+    }
+
+    with CosmosClient(database_name="hcm-chatbot", collection_name="user-chat") as client:
+        chat_history_pymongo = client.fetch_many(query)
+        chat_history = [history for history in chat_history_pymongo]
+        return chat_history
+
+
+@app.get("/all-chat-history", status_code=status.HTTP_200_OK)
+def fetch_chat_id(
+        employee_id: str = Query(..., description="Employee ID to retrieve chat history from"),
+        company_id: str = Query(..., description="Employee company Id")
+) -> List[ChatResponseSchema]:
+    """
+    The purpose of this function is to fetch all the history of the conversations between
+    the user and the assistant so that all conversations are in context.
+    """
+    query = {
         "employee_metadata.id": employee_id,
         "employee_metadata.company_id": company_id
     }

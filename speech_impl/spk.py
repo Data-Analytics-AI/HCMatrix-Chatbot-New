@@ -7,11 +7,11 @@ if not os.path.exists(audio_path):
     os.mkdir(audio_path)
 
 
-
 class HCMSpeechOut:
 
     def __init__(self) -> None:
-        self.speech_config = speechsdk.SpeechConfig(subscription=config['production']['speech_service']['key'], region="eastus")
+        self.speech_config = speechsdk.SpeechConfig(subscription=config['production']['speech_service']['key'],
+                                                    region="eastus")
         self.speech_config.speech_recognition_language = "en-US"
 
         # self.audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True) # NOTE: you can use audio in a vm.
