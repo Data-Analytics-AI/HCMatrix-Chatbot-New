@@ -1,6 +1,7 @@
 import os
 import yaml
 from dotenv import load_dotenv
+import time
 
 # Load the .env file
 load_dotenv()
@@ -22,41 +23,18 @@ def load_config_with_env(yaml_path):
     return resolve_placeholders(config)
 
 
+def timing_decorator(func):
+    """Decorator to measure execution time of a function."""
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()  # Start time
+        result = func(*args, **kwargs)    # Run the function
+        end_time = time.perf_counter()    # End time
+        execution_time = end_time - start_time
+        print(f"⏳ {func.__name__} executed in {execution_time:.4f} seconds")
+        return result  # Return original function output
+    return wrapper
+
+
+
 # Usage
 config = load_config_with_env('config/config.yml')
-
-
-# import os
-# import yaml
-# from dotenv import load_dotenv
-#
-# # Load the .env file
-# load_dotenv()
-#
-# # Custom constructor to handle the !python/str tag
-# def python_str_constructor(loader, node):
-#     value = loader.construct_scalar(node)
-#     return value  # Modify this if necessary for specific handling
-#
-# # Register the custom constructor for !python/str tag
-# yaml.add_constructor('!python/str', python_str_constructor)
-#
-# # Load and resolve placeholders in the YAML file
-# def load_config_with_env(yaml_path):
-#     with open(yaml_path, 'r') as file:
-#         config = yaml.load(file, Loader=yaml.FullLoader)
-#
-#     # Recursively resolve placeholders
-#     def resolve_placeholders(obj):
-#         if isinstance(obj, dict):
-#             return {k: resolve_placeholders(v) for k, v in obj.items()}
-#         elif isinstance(obj, str) and obj.startswith("$"):
-#             return os.getenv(obj[1:], obj)  # Replace with env variable or keep original
-#         return obj
-#
-#     return resolve_placeholders(config)
-#
-#
-# # Usage
-# config = load_config_with_env('config/config.yml')
-

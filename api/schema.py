@@ -10,9 +10,9 @@ class EmployeeMetadataSchema(BaseModel):
 
 
 class AudioChatSchema(BaseModel):
-    user_query: str = None
-    chat_id: str = None
-    audio: bool = None
+    user_query: str
+    chat_id: str
+    audio: bool
     employee_metadata: EmployeeMetadataSchema
 
 
