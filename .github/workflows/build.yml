@@ -30,15 +30,16 @@ jobs:
           pip install -r requirements.txt  # Install from requirements.txt
           pip install chromadb==0.3.29 motor==3.7.0  # Install additional packages
 
-      - name: Set Environment Variables
+      - name: Create .env file with secrets
         run: |
-          echo "ADLS_CLIENT_ID=${{ secrets.ADLS_CLIENT_ID }}" >> $GITHUB_ENV
-          echo "ADLS_CLIENT_SECRET=${{ secrets.ADLS_CLIENT_SECRET }}" >> $GITHUB_ENV
-          echo "ADLS_TENANT_ID=${{ secrets.ADLS_TENANT_ID }}" >> $GITHUB_ENV
-          echo "SPEECH_SERVICE_KEY=${{ secrets.SPEECH_SERVICE_KEY }}" >> $GITHUB_ENV
-          echo "PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }}" >> $GITHUB_ENV
-          echo "AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}" >> $GITHUB_ENV
-          echo "AZURE_EMBEDDING_API_KEY=${{ secrets.AZURE_EMBEDDING_API_KEY }}" >> $GITHUB_ENV
+          echo "ADLS_CLIENT_ID=${{ secrets.ADLS_CLIENT_ID }}" > .env
+          echo "ADLS_CLIENT_SECRET=${{ secrets.ADLS_CLIENT_SECRET }}" >> .env
+          echo "ADLS_TENANT_ID=${{ secrets.ADLS_TENANT_ID }}" >> .env
+          echo "SPEECH_SERVICE_KEY=${{ secrets.SPEECH_SERVICE_KEY }}" >> .env
+          echo "PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }}" >> .env
+          echo "AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }}" >> .env
+          echo "AZURE_EMBEDDING_API_KEY=${{ secrets.AZURE_EMBEDDING_API_KEY }}" >> .env
+          cat .env  # Optional: This will print the content of the .env file to confirm it was created
 
       - name: Run unit tests
         run: python3 api_test.py  # Runs your unit test script
