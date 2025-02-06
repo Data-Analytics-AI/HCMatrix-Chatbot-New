@@ -23,18 +23,18 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'  # Use Python 3.11
+          cache: 'pip'
 
       - name: Install dependencies
         run: |
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt  # Install from requirements.txt
           pip install chromadb==0.3.29 motor==3.7.0  # Install additional packages
+          pip install --upgrade starlette anyio
 
       - name: Run unit tests
         env:
-          ADLS_CLIENT_ID: ${{ secrets.ADLS_CLIENT_ID }}
           ADLS_CLIENT_SECRET: ${{ secrets.ADLS_CLIENT_SECRET }}
-          ADLS_TENANT_ID: ${{ secrets.ADLS_TENANT_ID }}
           SPEECH_SERVICE_KEY: ${{ secrets.SPEECH_SERVICE_KEY }}
           PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
           AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
