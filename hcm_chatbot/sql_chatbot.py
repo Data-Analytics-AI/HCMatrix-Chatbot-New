@@ -5,7 +5,7 @@ from langchain_community.utilities import SQLDatabase
 from langchain.prompts.chat import ChatPromptTemplate
 from data_preprocessing.gold_layer import GoldLayerUtils
 from langchain_community.agent_toolkits import create_sql_agent
-from langchain.agents.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
+from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 
 data_dir = "temp_data/"
 

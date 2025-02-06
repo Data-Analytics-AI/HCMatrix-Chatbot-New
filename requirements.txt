@@ -1,4 +1,4 @@
-fastapi==0.111.0
+fastapi==0.115.8
 langchain==0.2.3
 langchain_community==0.2.3
 langchain_openai==0.1.8
@@ -17,18 +17,9 @@ mysql-connector-python==8.4.0
 azure-cognitiveservices-speech==1.38.0
 aiofiles==24.1.0
 azure-cosmos==4.7.0
-pymongo==4.8.0
-# chromadb==0.3.29     # Due to conflict with fast API, Install seperately.
+pymongo==4.9.2
+chromadb==0.6.3
 sentence-transformers==2.2.2
-# motor==3.7.0  #Due to conflict with motor, install seperately
+motor==3.7.0
 pytest-benchmark==5.1.0
 pytest==8.3.4
-
-
-# pdfplumber
-# opencv-python-headless
-
-# langchain-huggingface
-# nltk==3.8.1
-# scikit-learn==1.5.0
-

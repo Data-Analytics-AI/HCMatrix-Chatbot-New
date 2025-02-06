@@ -1,6 +1,6 @@
 
 from typing import *
-from langchain.vectorstores import Pinecone as PNC
+from langchain_community.vectorstores import Pinecone as PNC
 from langchain.retrievers import ContextualCompressionRetriever
 from langchain.retrievers.document_compressors import LLMChainExtractor
 from langchain_openai import AzureOpenAIEmbeddings
