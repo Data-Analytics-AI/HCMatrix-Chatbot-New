@@ -15,9 +15,9 @@ production:
 
   adls_credentials:
     account_name: "transformedhcmatrixadls1"
-    client_id: $ADLS_CLIENT_ID
+    client_id: "76bd4cdb-7d2c-495a-99ad-ceafd1466644"
     client_secret: $ADLS_CLIENT_SECRET
-    tenant_id: $ADLS_TENENT_ID
+    tenant_id: "ba130eca-3030-48e1-9089-c979293aeb70"
     goldlayer_container_name: "goldcontainerhcmatrix"
     goldlayer_account_name: "goldstoragehcmatrixx"
     stagging_adls_name: "stagingadlshcmatrix1"

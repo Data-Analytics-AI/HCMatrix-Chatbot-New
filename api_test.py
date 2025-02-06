@@ -6,13 +6,7 @@ import base64
 from services.cosmos_service import CosmosClient
 from unittest.mock import patch
 import time
-from dotenv import load_dotenv
 from module.utils import config
-
-
-# Load the .env file
-load_dotenv()
-
 
 
 # Creating an instance of the API for testing.
