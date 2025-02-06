@@ -30,7 +30,7 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt  # Install from requirements.txt
           pip install chromadb==0.3.29 motor==3.7.0  # Install additional packages
-          pip install --upgrade anyio
+          pip install --upgrade starlette==0.22.0 anyio
 
       - name: Run unit tests
         env:
