@@ -7,14 +7,12 @@ import time
 import base64
 from model.azure_oai import AzureOAI
 import asyncio
-
 from services.cache_service import LRUCache
 from module.utils import config
 from services.cosmos_service import CosmosClient, AsyncCosmosClient
 from hcm_chatbot.router import chatbot_entry_execution
 from data_preprocessing.gold_layer import GoldLayerUtils
 from api.schema import AudioChatSchema, ChatResponseSchema
-from module.log_config import logger
 from module.spk import SpeechSynthesizerWrapper
 import azure.cognitiveservices.speech as speechsdk
 
@@ -108,13 +106,13 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
             # Run audio synthesis in the background (non-blocking)
             if request_model.audio:
                 try:
-                    logger.info("Generating user query from audio.")
+                    print("Generating user query from audio.")
                     audio_task = asyncio.create_task(wrapper.synthesize(response))
                     audio_response_data = base64.b64encode(await audio_task).decode(
                         "utf-8"
                     )
                 except Exception as e:
-                    logger.error(f"Error generating audio: {e}")
+                    print(f"Error generating audio: {e}")
                     audio_response_data = None  # Ensure text response is still returned
 
             current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
@@ -140,21 +138,20 @@ async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
 
             # Async database insertion (non-blocking)
             try:
-                logger.info("Attempting to store chat history in database")
+                print("Attempting to store chat history in database")
                 await client.insert_one(
                     response_data_without_audio
                 )  # ✅ Fully async DB call
-                logger.info("Successfully stored chat history in database")
+                print("Successfully stored chat history in database")
             except Exception as e:
-                logger.error(
+                print(
                     f"Error occurred while attempting to store message history in DB {e}"
                 )
 
             return JSONResponse(content=response_data)
 
         except Exception as e:
-            logger.error(f"Unexpected error: {e}")
-            print()
+            print(f"Unexpected error: {e}")
             raise HTTPException(status_code=500, detail="Unexpected server error")
 
 

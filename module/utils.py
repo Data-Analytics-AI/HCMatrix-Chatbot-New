@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 import time
@@ -35,6 +36,12 @@ def timing_decorator(func):
     return wrapper
 
 
+# Dynamically get the project root (HCMatrix-Chatbot)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# Define the config path
+CONFIG_PATH = PROJECT_ROOT / "config" / "config.yml"
 
 # Usage
-config = load_config_with_env('config/config.yml')
+# config = load_config_with_env('config/config.yml')
+config = load_config_with_env(CONFIG_PATH)

@@ -7,7 +7,6 @@ from data_preprocessing.gold_layer import GoldLayerUtils
 from hcm_chatbot.rag_chatbot import execute as chatbot_execute
 from hcm_chatbot.sql_chatbot import execute as sql_chatbot_execute
 from hcm_chatbot.layer_1_chatbot import layer_one_agent, layer_one_validator
-from module.log_config import logger
 
 
 def looks_like(main_txt, ref_text: str) -> bool:
@@ -40,8 +39,8 @@ async def chatbot_entry_execution(
 
     Args: user query and employee_metadata structure can be found in API schema class
     """
-    logger.info(f"User question: {user_query}")
-    logger.info("Attempting to get response from the SQL layer.")
+    print(f"User question: {user_query}")
+    print("Attempting to get response from the SQL layer.")
     sql_aqent_response = sql_chatbot_execute(
         employee_metadata.company_id,
         employee_metadata.id,
@@ -56,13 +55,13 @@ async def chatbot_entry_execution(
         "Sorry, couldn't get the best response to your query, kindly reach out to your HR "
         "department for the best response to your query or retry."
     ):
-        logger.debug(f"Could not respond to question. Using the SQL layer.")
-        logger.info("Generating response from the RAG layer.")
+        print(f"Could not respond to question. Using the SQL layer.")
+        print("Generating response from the RAG layer.")
         answer = layer_one_agent(
             user_query, llm_4o, company_id=employee_metadata.company_id
         )
-        logger.info(f"Response: \n {answer}")
+        print(f"Response: \n {answer}")
         return answer
 
-    logger.info("SQL layer sufficient to generate response.")
+    print("SQL layer sufficient to generate response.")
     return sql_aqent_response

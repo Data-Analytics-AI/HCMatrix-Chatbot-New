@@ -3,18 +3,21 @@ production:
   local_ip: "http://48.217.20.68:5000"
 
   params_config:
-    root_dir: "/Users/greatware/Desktop/Snapnet/HCMatrix-Chatbot"  # Placeholder for current working directory
-    data_dir: "/Users/greatware/Desktop/Snapnet/HCMatrix-Chatbot/temp_data"
-    log_dir: "/Users/greatware/Desktop/Snapnet/HCMatrix-Chatbot/project_log.log"
+    root_dir: ".."         # Reference the project root
+    data_dir: "temp_data"  # Relative path
+    # log_dir: "project_log.log"
+
+  vector_db_config:
+    path: "new_vectorstore"  # Relative path
 
   speech_service:
-    key: $speech_service_key
+    key: $SPEECH_SERVICE_KEY
 
   adls_credentials:
     account_name: "transformedhcmatrixadls1"
-    client_id: $adls_client_id
-    client_secret: $adls_client_secret
-    tenant_id: $adls_tenant_id
+    client_id: $ADLS_CLIENT_ID
+    client_secret: $ADLS_CLIENT_SECRET
+    tenant_id: $ADLS_TENENT_ID
     goldlayer_container_name: "goldcontainerhcmatrix"
     goldlayer_account_name: "goldstoragehcmatrixx"
     stagging_adls_name: "stagingadlshcmatrix1"
@@ -46,9 +49,6 @@ production:
     AZURE_EMBEDDING_API_VERSION: "2023-05-15"
     AZURE_EMBEDDING_API_BASE: "https://hcmatrix-openai.openai.azure.com/openai/deployments/hcmatrix-embeddings/embeddings?api-version=2023-05-15"
     AZURE_EMBEDDING_API_KEY: $AZURE_EMBEDDING_API_KEY
-
-  vector_db_config:
-    path: '/Users/greatware/Desktop/Snapnet/HCMatrix-Chatbot/new_vectorstore'
 
   layer_one_agent_prompt: |
     You are an AI assistant developed by Snapnet for various organizational uses. 

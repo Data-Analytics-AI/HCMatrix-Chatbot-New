@@ -1,5 +1,4 @@
-# fastapi==0.111.0
-fastapi
+fastapi==0.111.0
 langchain==0.2.3
 langchain_community==0.2.3
 langchain_openai==0.1.8
@@ -19,13 +18,17 @@ azure-cognitiveservices-speech==1.38.0
 aiofiles==24.1.0
 azure-cosmos==4.7.0
 pymongo==4.8.0
-pdfplumber
-opencv-python-headless
-sentence-transformers
-chromadb==0.3.29
-langchain-huggingface
+# chromadb==0.3.29     # Due to conflict with fast API, Install seperately.
+sentence-transformers==2.2.2
+# motor==3.7.0  #Due to conflict with motor, install seperately
+pytest-benchmark==5.1.0
+pytest==8.3.4
+
+
+# pdfplumber
+# opencv-python-headless
+
+# langchain-huggingface
 # nltk==3.8.1
 # scikit-learn==1.5.0
-pytest
-motor==3.7.0
-pytest-benchmark==5.1.0
+
