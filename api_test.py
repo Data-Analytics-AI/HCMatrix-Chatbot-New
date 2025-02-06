@@ -6,7 +6,9 @@ import base64
 from services.cosmos_service import CosmosClient
 from unittest.mock import patch
 import time
+from module.utils import config
 
+print(config)
 
 # Creating an instance of the API for testing.
 client = TestClient(app)
