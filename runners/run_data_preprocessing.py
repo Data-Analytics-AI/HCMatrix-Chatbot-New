@@ -26,7 +26,7 @@ def create_company_root_dir(data_root_dir: str, company_id: str) -> str:
 
 def execute(company_id: str, utils_conn, auth_conn):
     if not isinstance(company_id, str):
-        raise ValueError("Wrong value passed into the prerpocessor")
+        raise ValueError("Wrong value passed into the preprocessor")
 
     company_root_dir = create_company_root_dir(data_dir, company_id)
     permission = permissions.CompanyPermission(

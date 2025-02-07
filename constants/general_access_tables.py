@@ -1,4 +1,3 @@
-
 GENERAL_ACCESS_TABLE = [
     'addresses',
     'employees',
@@ -17,7 +16,7 @@ GENERAL_ACCESS_TABLE = [
     'conference_rooms',
     'countries',
     'departments',
-    'designations', 
+    'designations',
     'exit_handover_asset_checklists',
     'groups',
     'health_access_hmo_plans',
@@ -38,12 +37,12 @@ GENERAL_ACCESS_TABLE = [
     'position_change_requisitions',
     'probation_policies',
     'project_managements',
-    'projects', 
+    'projects',
     'requisition_settings',
     'resignation_policies',
     'states',
     'sub_payment_details',
-    'subcription_storage_transactions',
+    'subscription_storage_transactions',
     'subscription_discounts',
     'subscription_extra_storages',
     'subscription_resource_managements',

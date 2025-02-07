@@ -1,6 +1,5 @@
-
 ROLE_ACCESS_TABLE = [
-    'asset_requisitions', 
+    'asset_requisitions',
     'vehicle_bookings',
     'assets',
     'health_access_employee_medical_history',

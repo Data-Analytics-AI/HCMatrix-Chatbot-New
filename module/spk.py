@@ -1,14 +1,13 @@
-from module.utils import config, timing_decorator
 import azure.cognitiveservices.speech as speechsdk
 import asyncio
 import time
 
 
 class SpeechSynthesizerWrapper:
-    def __init__(self, config: speechsdk.SpeechConfig):
+    def __init__(self, speech_config: speechsdk.SpeechConfig):
         """Initialize the Speech Synthesizer and keep the connection open."""
-        self.config = config
-        self.synthesizer = speechsdk.SpeechSynthesizer(config, None)
+        self.speech_config = speech_config
+        self.synthesizer = speechsdk.SpeechSynthesizer(speech_config, None)
         self.connection = speechsdk.Connection.from_speech_synthesizer(self.synthesizer)
         self.connection.open(True)  # Keeps the connection open
         print(
@@ -36,7 +35,8 @@ class SpeechSynthesizerWrapper:
                     break  # Stop loop once connection is closed
                 else:
                     print(
-                        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 🔄 Auto-close skipped. Last request was {time_since_last_request:.1f} seconds ago."
+                        f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 🔄 Auto-close skipped. Last "
+                        f"request was {time_since_last_request:.1f} seconds ago."
                     )
 
         self.auto_close_task = asyncio.create_task(auto_close())
@@ -62,7 +62,8 @@ class SpeechSynthesizerWrapper:
                 return result.audio_data
             elif result.reason == speechsdk.ResultReason.Canceled:
                 print(
-                    f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ❌ Speech synthesis canceled: {result.cancellation_details.reason}"
+                    f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ❌ Speech "
+                    f"synthesis canceled: {result.cancellation_details.reason}"
                 )
         except Exception as e:
             print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ❌ Error: {e}")

@@ -98,4 +98,3 @@ def store_chunks_in_chromadb(chunks, persist_directory: str):
 
     vector_store.persist()
     print(f"Chunks stored in ChromaDB at {persist_directory} with metadata including company_id and chunk_id.")
-

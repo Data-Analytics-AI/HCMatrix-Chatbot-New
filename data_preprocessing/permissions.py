@@ -1,6 +1,5 @@
-
 import os
-from typing import *
+from typing import Optional, List, Dict
 
 from data_preprocessing.adls_utils import list_all_files_by_company_id
 from data_preprocessing.adls_connection import ADLSConnection
@@ -13,8 +12,10 @@ from constants import (
     valid_roles
 )
 
+
 class CompanyPermission(DataLoaders):
-    def __init__(self, company_id:str, company_data_dir: str, utility_adls_connection: ADLSConnection, auth_adls_conn: ADLSConnection) -> None:
+    def __init__(self, company_id: str, company_data_dir: str, utility_adls_connection: ADLSConnection,
+                 auth_adls_conn: ADLSConnection) -> None:
         super().__init__(utility_adls_connection)
 
         if not isinstance(company_id, str):
@@ -31,12 +32,13 @@ class CompanyPermission(DataLoaders):
         self._PERSONAL_ACCESS_TABLE = personal_access_table.PERSONAL_ACCESS_TABLE
         self.company_files = list_all_files_by_company_id(self.company_id, self.file_system_client)
         self.valid_companies_table = [i.split("/")[0] for i in self.company_files]
-        self.company_general_access_table = list(set(self.valid_companies_table).intersection(set(self._GENERAL_ACCESS_TABLE)))
-        self.company_roles_access_table = list(set(self.valid_companies_table).intersection(set(self._ROLE_ACCESS_TABLE)))
+        self.company_general_access_table = list(
+            set(self.valid_companies_table).intersection(set(self._GENERAL_ACCESS_TABLE)))
+        self.company_roles_access_table = list(
+            set(self.valid_companies_table).intersection(set(self._ROLE_ACCESS_TABLE)))
         self.comapny_save_path = self._get_or_create_company_save_path(self.company_id)
         self.download_company_database_adls(self.comapny_save_path, self.company_files)
         self._initialize_data_read_from_adls()
-
 
     def _initialize_data_read_from_adls(self):
         self.permission_df = self.dataframe_from_adls_file_path(
@@ -46,11 +48,11 @@ class CompanyPermission(DataLoaders):
             "role_permissions/role_permissions.csv", process_in_memory=True,
             adls_connection=self.auth_adls_conn)
 
-
     def _role_permission_labels_mapper(self, role_id: int):
 
-        permission_ids:list[int] = self.roles_df[self.roles_df['roleId'] == role_id]['permissionId'].to_list()
-        permission_labels: list[str] = [self.permission_df[self.permission_df['id'] == id]['name'].iloc[0] for id in permission_ids]
+        permission_ids: list[int] = self.roles_df[self.roles_df['roleId'] == role_id]['permissionId'].to_list()
+        permission_labels: list[str] = [self.permission_df[self.permission_df['id'] == id]['name'].iloc[0] for id in
+                                        permission_ids]
         permission_labels = list(set(permission_labels).intersection(set(self._VALID_ROLES_REQUIRED_BOT)))
 
         if len(permission_labels) == 0:
@@ -70,7 +72,7 @@ class CompanyPermission(DataLoaders):
         permission_labels = self._role_permission_labels_mapper(role_id)
         if permission_labels == -1:
             return self._GENERAL_ACCESS_TABLE
-        
+
         elif isinstance(permission_labels, list):
             role_access_tables = []
             for label in permission_labels:
@@ -78,7 +80,7 @@ class CompanyPermission(DataLoaders):
 
             access_tables = [*self._GENERAL_ACCESS_TABLE, *role_access_tables]
             return access_tables
-    
+
     def _employee_role_id_mapper(self, employee_id):
         index = next((i for i, item in enumerate(self.company_files) if "employees/" in item), -1)
         self.employee_df = self.dataframe_from_adls_file_path(self.company_files[index])
@@ -89,30 +91,29 @@ class CompanyPermission(DataLoaders):
         index = next((i for i, item in enumerate(company_files) if "employees/" in item), -1)
         if index == -1:
             raise ValueError("No employee file found in the company files")
-        
+
         employee_df = dataframe_from_adls_file_path(company_files[index])
         valid_company_employee_ids = employee_df['id'].to_list()
         valid_company_role_ids = employee_df['roleId'].to_list()
 
         return valid_company_employee_ids, valid_company_role_ids
-        
+
     def extract_personal_employee_data(self, employee_id: int, table: str):
         table_path = next((item for _, item in enumerate(self.company_files) if table in item), -1)
         if table_path != -1:
             save_path = f"{self.comapny_save_path}/{table}_emp-{employee_id}.csv"
             df = self.dataframe_from_adls_file_path(table_path)
             df = df[df["employeeId"] == employee_id]
-            
+
             # It will be empty if the user does not have personal data in the table
             if not df.empty:
                 # print ("He's got some data here!!")
                 df.to_csv(save_path, index=False)
                 return save_path
             # print ("Hes empty")
-    
 
     def generate_employee_permission_tables(self, role_id: int, employee_id: int) -> Dict[str, List[str]]:
-            
+
         emp_table_names = {
             "table_names": [],
             "personal_table_path": []
@@ -124,9 +125,7 @@ class CompanyPermission(DataLoaders):
         # print (is_personal_access_table_false)
         for table in is_personal_access_table_false:
             df_path = self.extract_personal_employee_data(employee_id, table)
-            if df_path != None:
+            if df_path is not None:
                 emp_table_names['personal_table_path'].append(df_path)
-        
+
         return emp_table_names
-    
-    

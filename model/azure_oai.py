@@ -1,5 +1,5 @@
 import os
-from typing import *
+from typing import Any
 from langchain_openai import AzureChatOpenAI, AzureOpenAI, AzureOpenAIEmbeddings
 from module.utils import config
 

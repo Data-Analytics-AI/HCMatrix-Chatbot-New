@@ -74,8 +74,7 @@ def execute(
 
 if __name__ == "__main__":
     company_id = "53"
-    employee_id = 372  # 373
-    # query = 'What is the maximum number of dependents I can register within my HMO Plan?'
+    employee_id = 372
     query = 'When is my work anniversary?'
 
     print(execute(company_id, employee_id, query))

@@ -1,4 +1,3 @@
-
 VALID_ROLES_REQUIRED_BOT = [
     'Manage Employees',
     'Manage Workflows',
@@ -16,4 +15,3 @@ VALID_ROLES_REQUIRED_BOT = [
     'Manage Subscription Prices',
     'View Training Sessions'
 ]
-

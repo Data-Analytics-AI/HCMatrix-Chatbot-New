@@ -1,7 +1,7 @@
 import os
 import io
 import tempfile
-from typing import *
+from typing import Dict, Any
 from data_preprocessing.adls_connection import ADLSConnection
 
 

@@ -1,12 +1,10 @@
 import string
-from typing import *
 from services.cache_service import LRUCache
 from langchain_openai import AzureChatOpenAI
 from api.schema import EmployeeMetadataSchema
 from data_preprocessing.gold_layer import GoldLayerUtils
-from hcm_chatbot.rag_chatbot import execute as chatbot_execute
 from hcm_chatbot.sql_chatbot import execute as sql_chatbot_execute
-from hcm_chatbot.layer_1_chatbot import layer_one_agent, layer_one_validator
+from hcm_chatbot.layer_1_chatbot import layer_one_agent
 
 
 def looks_like(main_txt, ref_text: str) -> bool:
@@ -41,7 +39,7 @@ async def chatbot_entry_execution(
     """
     print(f"User question: {user_query}")
     print("Attempting to get response from the SQL layer.")
-    sql_aqent_response = sql_chatbot_execute(
+    sql_agent_response = sql_chatbot_execute(
         employee_metadata.company_id,
         employee_metadata.id,
         user_query,
@@ -51,11 +49,11 @@ async def chatbot_entry_execution(
     ).strip()
     # .strip() is added to improve consistency for response
 
-    if sql_aqent_response == (
+    if sql_agent_response == (
         "Sorry, couldn't get the best response to your query, kindly reach out to your HR "
         "department for the best response to your query or retry."
     ):
-        print(f"Could not respond to question. Using the SQL layer.")
+        print("Could not respond to question. Using the SQL layer.")
         print("Generating response from the RAG layer.")
         answer = layer_one_agent(
             user_query, llm_4o, company_id=employee_metadata.company_id
@@ -64,4 +62,4 @@ async def chatbot_entry_execution(
         return answer
 
     print("SQL layer sufficient to generate response.")
-    return sql_aqent_response
+    return sql_agent_response

@@ -1,7 +1,7 @@
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from fastapi import FastAPI, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
-from typing import *
+from typing import List
 import uuid
 import time
 import base64
@@ -9,12 +9,12 @@ from model.azure_oai import AzureOAI
 import asyncio
 from services.cache_service import LRUCache
 from module.utils import config
-from services.cosmos_service import CosmosClient, AsyncCosmosClient
+from services.cosmos_service import AsyncCosmosClient
 from hcm_chatbot.router import chatbot_entry_execution
 from data_preprocessing.gold_layer import GoldLayerUtils
 from api.schema import AudioChatSchema, ChatResponseSchema
 from module.spk import SpeechSynthesizerWrapper
-import azure.cognitiveservices.speech as speechsdk
+from azure.cognitiveservices import speech as speechsdk
 
 # ===================== Initialize model and embeddings ====================
 # ===========================================================================
@@ -173,16 +173,13 @@ def fetch_chat_id(
         "employee_metadata.company_id": company_id,
     }
 
-    with CosmosClient(
-        database_name="hcm-chatbot", collection_name="user-chat"
-    ) as client:
-        chat_history_pymongo = client.fetch_many(query)
-        chat_history = [history for history in chat_history_pymongo]
-        return chat_history
+    chat_history_pymongo = client.fetch_many(query)
+    chat_history = [history for history in chat_history_pymongo]
+    return chat_history
 
 
 @app.get("/all-chat-history", status_code=status.HTTP_200_OK)
-def fetch_chat_id(
+def fetch_all_chat_id(
     employee_id: str = Query(
         ..., description="Employee ID to retrieve chat history from"
     ),
@@ -197,12 +194,9 @@ def fetch_chat_id(
         "employee_metadata.company_id": company_id,
     }
 
-    with CosmosClient(
-        database_name="hcm-chatbot", collection_name="user-chat"
-    ) as client:
-        chat_history_pymongo = client.fetch_many(query)
-        chat_history = [history for history in chat_history_pymongo]
-        return chat_history
+    chat_history_pymongo = client.fetch_many(query)
+    chat_history = [history for history in chat_history_pymongo]
+    return chat_history
 
 
 @app.on_event("shutdown")

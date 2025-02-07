@@ -1,7 +1,7 @@
-from typing import *
+from typing import Dict, Any
 from rag_engine.retriever_ import Retriever
 from langchain_openai import AzureChatOpenAI
-from rag_engine.utils import retieve_user_query_context
+from rag_engine.utils import retrieve_user_query_context
 from langchain.chains import ConversationalRetrievalChain
 from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
 
@@ -27,17 +27,16 @@ def chat(query, db_retriever, llm_4o):
     chain_type = 'stuff'
     chat_history = []
 
-    QA_CHAIN = ConversationalRetrievalChain.from_llm(
-        llm_4o,  #llm,
+    qa_chain = ConversationalRetrievalChain.from_llm(
+        llm_4o,
         chain_type=chain_type,
         retriever=db_retriever,
-        #memory=memory,
         return_source_documents=True,
         return_generated_question=True,
         combine_docs_chain_kwargs={'prompt': qa_prompt}
     )
 
-    response = QA_CHAIN({"question": query, "chat_history": chat_history})
+    response = qa_chain({"question": query, "chat_history": chat_history})
     chat_history.extend([(query, response['answer'])])
     print(response)
 
@@ -47,17 +46,7 @@ def chat(query, db_retriever, llm_4o):
 def execute(
         user_query: str, user_metadata: Dict[str, Any],
         llm_4O: AzureChatOpenAI, retriever: Retriever):
-    db_retriever = retieve_user_query_context(user_query, user_metadata, retriever)
+    db_retriever = retrieve_user_query_context(user_query, user_metadata, retriever)
     response, _ = chat(user_query, db_retriever, llm_4O)
 
     return response
-
-
-if __name__ == "__main__":
-    user_metadata = {
-        "user_departement_id": 43,
-        "user_role_id": 323,
-        "user_group_id": 54
-    }
-
-    print(execute("Who is the president of Nigeria.", user_metadata))
