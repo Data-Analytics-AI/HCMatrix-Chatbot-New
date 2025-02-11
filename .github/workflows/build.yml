@@ -1,10 +1,20 @@
 name: Integration Tests and Deployment
 
 on:
-  workflow_dispatch:  # Allows manual triggering from GitHub Actions UI
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Select Environment'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - production
   pull_request:
     branches:
       - main  # Triggers when a PR is created for main
+      - feature/**
     types:
       - closed  # Only triggers when the PR is merged into main
 
