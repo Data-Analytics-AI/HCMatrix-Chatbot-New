@@ -13,13 +13,13 @@ on:
           - production
   pull_request:
     branches:
-      - master  # Triggers when a PR is created for main
+      - master  # Triggers when a PR is created for master
       - feature/**
     types:
-      - closed  # Only triggers when the PR is merged into main
+      - closed  # Only triggers when the PR is merged into master
 
 env:
-  DEPLOY_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
+  DEPLOY_ENV: ${{ github.ref == 'refs/heads/master' && 'production' || 'development' }}
 
 jobs:
   # =======================
