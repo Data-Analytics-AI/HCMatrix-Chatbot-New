@@ -71,7 +71,7 @@ jobs:
       - name: Set environment variables
         run: echo "IMAGE_TAG=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
 
-      - name: Log in to Azure Container Registry
+      - name: Log in to Azure
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
@@ -79,10 +79,6 @@ jobs:
       - name: Verify Azure Login
         run: az account show
 
-      - name: Build and Push Docker Image
-        run: |
-          docker build -t myregistry.azurecr.io/my-app:${{ env.IMAGE_TAG }} .
-          docker push myregistry.azurecr.io/my-app:${{ env.IMAGE_TAG }}
       - name: Log in to Azure Container Registry
         run: az acr login --name hcmatrix
 
