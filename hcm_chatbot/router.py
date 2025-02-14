@@ -5,6 +5,7 @@ from api.schema import EmployeeMetadataSchema
 from data_preprocessing.gold_layer import GoldLayerUtils
 from hcm_chatbot.sql_chatbot import execute as sql_chatbot_execute
 from hcm_chatbot.layer_1_chatbot import layer_one_agent
+from module.utils import timing_decorator
 
 
 def looks_like(main_txt, ref_text: str) -> bool:
@@ -24,6 +25,7 @@ def route_user_query(
         return "Return Answer to User"
 
 
+@timing_decorator
 async def chatbot_entry_execution(
     user_query: str,
     employee_metadata: EmployeeMetadataSchema,

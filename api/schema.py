@@ -9,15 +9,9 @@ class EmployeeMetadataSchema(BaseModel):
     id: str
 
 
-class AudioChatSchema(BaseModel):
+class ChatInputSchema(BaseModel):
     user_query: str
     chat_id: str
-    audio: bool
-    employee_metadata: EmployeeMetadataSchema
-
-
-class ChatSchema(BaseModel):
-    user_query: str = None
     employee_metadata: EmployeeMetadataSchema
 
 
@@ -25,9 +19,9 @@ class ChatResponseSchema(BaseModel):
     employee_metadata: EmployeeMetadataSchema
     question: str
     answer: str
-    audio_response: str = None
     timestamp: str
     request_id: str
+    chat_id: str
 
 
 class ChatHistory(BaseModel):

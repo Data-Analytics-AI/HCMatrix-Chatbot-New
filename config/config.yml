@@ -13,6 +13,17 @@ production:
   speech_service:
     key: $SPEECH_SERVICE_KEY
 
+  employee_db_tables:
+    - employees_education_details
+    - employees_emergency_contacts
+    - employees_employment_history
+    - employees_finance_details
+    - employees_job_information
+    - employees_manager_history
+    - employees_personal_information
+    - employees_role_history
+    - employees_salary_history
+
   adls_credentials:
     account_name: "transformedhcmatrixadls1"
     client_id: "76bd4cdb-7d2c-495a-99ad-ceafd1466644"

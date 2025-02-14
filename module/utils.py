@@ -3,6 +3,8 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 import time
+import asyncio
+import functools
 
 # Load the .env file
 load_dotenv()
@@ -25,15 +27,27 @@ def load_config_with_env(yaml_path):
 
 
 def timing_decorator(func):
-    """Decorator to measure execution time of a function."""
-    def wrapper(*args, **kwargs):
-        start_time = time.perf_counter()  # Start time
-        result = func(*args, **kwargs)    # Run the function
-        end_time = time.perf_counter()    # End time
-        execution_time = end_time - start_time
-        print(f"⏳ {func.__name__} executed in {execution_time:.4f} seconds")
-        return result  # Return original function output
-    return wrapper
+    """Decorator to measure execution time of a function (sync & async support)."""
+    if asyncio.iscoroutinefunction(func):
+        @functools.wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            start_time = time.perf_counter()  # Start time
+            result = await func(*args, **kwargs)  # Await async function
+            end_time = time.perf_counter()  # End time
+            execution_time = end_time - start_time
+            print(f"⏳ {func.__name__} executed in {execution_time:.4f} seconds")
+            return result
+        return async_wrapper
+    else:
+        @functools.wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            start_time = time.perf_counter()  # Start time
+            result = func(*args, **kwargs)  # Run sync function
+            end_time = time.perf_counter()  # End time
+            execution_time = end_time - start_time
+            print(f"⏳ {func.__name__} executed in {execution_time:.4f} seconds")
+            return result
+        return sync_wrapper
 
 
 # Dynamically get the project root (HCMatrix-Chatbot)

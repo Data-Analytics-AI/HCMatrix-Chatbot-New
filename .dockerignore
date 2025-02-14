@@ -1,0 +1,20 @@
+# Ignore Python cache and virtual environments
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+
+# Ignore logs and temporary files
+*.log
+logs/
+tmp/
+*.swp
+
+# Ignore Docker-related files
+Dockerfile
+docker-compose.yml
+.evn_example
+.gitignore
+api_test.py
+.github/

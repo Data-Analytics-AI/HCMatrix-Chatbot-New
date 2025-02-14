@@ -1,18 +1,17 @@
-from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse
 from fastapi import FastAPI, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
+import asyncio
 import uuid
 import time
-import base64
 from model.azure_oai import AzureOAI
-import asyncio
 from services.cache_service import LRUCache
 from module.utils import config
 from services.cosmos_service import AsyncCosmosClient
 from hcm_chatbot.router import chatbot_entry_execution
 from data_preprocessing.gold_layer import GoldLayerUtils
-from api.schema import AudioChatSchema, ChatResponseSchema
+from api.schema import ChatInputSchema, ChatResponseSchema
 from module.spk import SpeechSynthesizerWrapper
 from azure.cognitiveservices import speech as speechsdk
 
@@ -45,9 +44,10 @@ speech_config = speechsdk.SpeechConfig(
 )
 wrapper = SpeechSynthesizerWrapper(speech_config)
 
-client = AsyncCosmosClient(
+async_client = AsyncCosmosClient(
     database_name="hcm-chatbot", collection_name="user-chat"
 )  # ✅ Async Client
+
 
 app = FastAPI()
 origins = [
@@ -80,83 +80,76 @@ def home():
     }
 
 
+# ===================== Chatbot API (Text Response Only) =======================
 @app.post("/chat", status_code=status.HTTP_200_OK, response_model=ChatResponseSchema)
-async def chatbot(request_model: AudioChatSchema) -> ChatResponseSchema:
+async def chatbot(request_model: ChatInputSchema) -> ChatResponseSchema:
+    """Returns chatbot response (text only, no audio)."""
 
-    if (
-        not request_model.user_query.strip()
-    ):  # Check if user_query is empty or just spaces
+    if not request_model.user_query.strip():
         raise HTTPException(status_code=400, detail="User query cannot be empty")
 
-    for _ in range(2):
-        try:
-            response_id = str(uuid.uuid4())
+    response_id = str(uuid.uuid4())
 
-            # Generating model response
-            response = await chatbot_entry_execution(
-                request_model.user_query,
-                request_model.employee_metadata,
-                llm_4O,
-                gold_adls_conn,
-                chatbot_cache,
-            )
+    try:
+        # Generate chatbot response
+        response = await chatbot_entry_execution(
+            request_model.user_query,
+            request_model.employee_metadata,
+            llm_4O,
+            gold_adls_conn,
+            chatbot_cache,
+        )
 
-            audio_response_data = None
+        current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
-            # Run audio synthesis in the background (non-blocking)
-            if request_model.audio:
-                try:
-                    print("Generating user query from audio.")
-                    audio_task = asyncio.create_task(wrapper.synthesize(response))
-                    audio_response_data = base64.b64encode(await audio_task).decode(
-                        "utf-8"
-                    )
-                except Exception as e:
-                    print(f"Error generating audio: {e}")
-                    audio_response_data = None  # Ensure text response is still returned
+        response_data = {
+            "employee_metadata": request_model.employee_metadata.dict(),
+            "question": request_model.user_query,
+            "answer": response,
+            "timestamp": current_time_str,
+            "request_id": response_id,
+            "chat_id": request_model.chat_id,
+        }
+        print("*" * 20)
+        print(response_data)
 
-            current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        # 🔹 Store chat history asynchronously in the background
+        asyncio.create_task(store_chat_history(response_data))
 
-            # Generate output metadata
-            response_data = {
-                "employee_metadata": request_model.employee_metadata.dict(),
-                "question": request_model.user_query,
-                "answer": response,
-                "timestamp": current_time_str,
-                "audio": (
-                    audio_response_data
-                    if request_model.audio and audio_response_data is not None
-                    else ""
-                ),
-                "request_id": response_id,
-                "chat_id": request_model.chat_id,
-            }
+        # return JSONResponse(content=response_data)
+        return response_data
 
-            # Remove "audio" efficiently
-            response_data_without_audio = response_data.copy()
-            response_data_without_audio.pop("audio", None)
+    except Exception as e:
+        print(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail="Unexpected server error")
 
-            # Async database insertion (non-blocking)
-            try:
-                print("Attempting to store chat history in database")
-                await client.insert_one(
-                    response_data_without_audio
-                )  # ✅ Fully async DB call
-                print("Successfully stored chat history in database")
-            except Exception as e:
-                print(
-                    f"Error occurred while attempting to store message history in DB {e}"
-                )
 
-            return JSONResponse(content=response_data)
+async def store_chat_history(chat_data: dict):
+    """Stores chat history in the database asynchronously."""
+    try:
+        await async_client.insert_one(chat_data)
+    except Exception as e:
+        print(f"Error storing chat history: {e}")
 
-        except Exception as e:
-            print(f"Unexpected error: {e}")
-            raise HTTPException(status_code=500, detail="Unexpected server error")
+
+# ===================== Audio Synthesis API (Separate) =======================
+@app.get("/audio", status_code=status.HTTP_200_OK)
+async def generate_audio(text: str):
+    """Generates and streams speech audio from text."""
+    try:
+        async def audio_stream():
+            audio_bytes = await wrapper.synthesize(text)
+            yield audio_bytes  # Stream audio in chunks
+
+        return StreamingResponse(audio_stream(), media_type="audio/mpeg")
+
+    except Exception as e:
+        print(f"Error generating audio: {e}")
+        raise HTTPException(status_code=500, detail="Audio synthesis failed")
 
 
 @app.get("/chat-history", status_code=status.HTTP_200_OK)
-def fetch_chat_id(
+async def fetch_chat_id(
     chat_id: str = Query(..., description="Chat ID from FE"),
     employee_id: str = Query(
         ..., description="Employee ID to retrieve chat history from"
@@ -173,13 +166,11 @@ def fetch_chat_id(
         "employee_metadata.company_id": company_id,
     }
 
-    chat_history_pymongo = client.fetch_many(query)
-    chat_history = [history for history in chat_history_pymongo]
-    return chat_history
+    return await async_client.fetch_many(query)  # Add await here
 
 
 @app.get("/all-chat-history", status_code=status.HTTP_200_OK)
-def fetch_all_chat_id(
+async def fetch_all_chat_id(
     employee_id: str = Query(
         ..., description="Employee ID to retrieve chat history from"
     ),
@@ -193,10 +184,7 @@ def fetch_all_chat_id(
         "employee_metadata.id": employee_id,
         "employee_metadata.company_id": company_id,
     }
-
-    chat_history_pymongo = client.fetch_many(query)
-    chat_history = [history for history in chat_history_pymongo]
-    return chat_history
+    return await async_client.fetch_many(query)
 
 
 @app.on_event("shutdown")

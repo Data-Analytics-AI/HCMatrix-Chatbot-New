@@ -2,7 +2,7 @@ Suggestions and Improvements
 1. Security Considerations:
 
 Ensure all secrets (e.g., GH_TOKEN, ACR_USERNAME, ACR_PASSWORD, AZURE_CREDENTIALS) are stored securely in GitHub Secrets.
-Avoid using the latest tag for Docker images in production. Use a specific tag like ${{ github.sha }} for traceability.
+Avoid using the latest tag for Docker images in production. Use a specific tag like ${{ GitHub.sha }} for traceability.
 
 2. Retry Mechanism:
 
@@ -38,3 +38,8 @@ Set up monitoring and logging for your Kubernetes cluster and applications to tr
 Review the replicas configuration in the deployment manifest and ensure it matches your expected load and availability requirements.
 
 
+# TODO: Update the test script to also include all endpoints
+# TODO: Implementation of Pinecone as a vector store
+# TODO: Remove all unnecessary python files.
+# TODO: The mongoDB url should be stored in the .env
+# TODO: Handle the benchmark time issue when running the test in GitHub actions environment.
