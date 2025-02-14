@@ -93,5 +93,4 @@ jobs:
           docker push hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}
 
       - name: Deploy container to Azure Container Instance (ACI)
-        run: |
-          az container create --resource-group HCM-Staging --name hcmatrix-staging-container --image hcmatrix.azurecr.io/hcmatrix_staging_app:latest --cpu 4 --memory 8 --registry-login-server hcmatrix.azurecr.io --dns-name-label hcmatrix-staging-app --ports 5000 --ip-address Public
+        run: az container create --resource-group HCM-Staging --name hcmatrix-staging-container --image hcmatrix.azurecr.io/hcmatrix_staging_app:latest --cpu 4 --memory 8 --registry-login-server hcmatrix.azurecr.io --registry-username ${{ secrets.ACR_USERNAME }} --registry-password ${{ secrets.ACR_PASSWORD }} --dns-name-label hcmatrix-staging-app --ports 5000 --ip-address Public
