@@ -13,23 +13,20 @@ on:
           - production
   pull_request:
     branches:
-      - master  # Triggers when a PR is created for master
+      - master
       - feature/**
     types:
-      - closed  # Only triggers when the PR is merged into master
+      - closed
 
 env:
   DEPLOY_ENV: ${{ github.ref == 'refs/heads/master' && 'production' || 'development' }}
 
 jobs:
-  # =======================
-  # JOB 1: INTEGRATION TESTS
-  # =======================
   integration_tests:
     name: Run API Tests and Code Linting
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
-    env: 
+    env:
       ADLS_CLIENT_SECRET: ${{ secrets.ADLS_CLIENT_SECRET }}
       SPEECH_SERVICE_KEY: ${{ secrets.SPEECH_SERVICE_KEY }}
       PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
@@ -56,13 +53,10 @@ jobs:
           echo "Running API tests in ${{ inputs.environment }} environment..."
           flake8 **/*.py --count --show-source --statistics || (echo "Flake8 failed! Fix issues before merging." && exit 1)
 
-  # =======================
-  # JOB 2: BUILD & PUSH DOCKER IMAGE
-  # =======================
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
-    needs: integration_tests  # Runs only if tests pass
+    needs: integration_tests
 
     steps:
       - name: Checkout repository
@@ -84,14 +78,29 @@ jobs:
 
       - name: Build and tag Docker image
         run: |
-          docker build -t hcmatrix.azurecr.io/hcmatrix_staging_app:latest .
-          docker tag hcmatrix.azurecr.io/hcmatrix_staging_app:latest hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}
+          docker build -t hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} .
+          docker tag hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} hcmatrix.azurecr.io/hcmatrix_staging_app:latest
 
       - name: Push Docker images
         run: |
-          docker push hcmatrix.azurecr.io/hcmatrix_staging_app:latest
           docker push hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}
+          docker push hcmatrix.azurecr.io/hcmatrix_staging_app:latest
 
-      - name: Deploy container to Azure Container Instance (ACI)
-        run: az container create --resource-group HCM-Staging --name hcmatrix-staging-container --image hcmatrix.azurecr.io/hcmatrix_staging_app:latest --cpu 4 --memory 8 --registry-login-server hcmatrix.azurecr.io --registry-username ${{ secrets.ACR_USERNAME }} --registry-password ${{ secrets.ACR_PASSWORD }} --dns-name-label hcmatrix-staging-app --ports 5000 --ip-address Public --os-type Linux
-
+#      - name: Delete old container (if exists)
+#        run: az container delete --resource-group HCM-Staging --name hcmatrix-staging-container --yes || true
+#
+#      - name: Deploy container to Azure Container Instance (ACI)
+#        run: |
+#          az container create --resource-group HCM-Staging --name hcmatrix-staging-container \
+#            --image hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} \
+#            --cpu 4 --memory 8 \
+#            --registry-login-server hcmatrix.azurecr.io \
+#            --registry-username ${{ secrets.ACR_USERNAME }} \
+#            --registry-password ${{ secrets.ACR_PASSWORD }} \
+#            --dns-name-label hcmatrix-staging-app --ports 5000 --ip-address Public --os-type Linux
+#
+#      - name: Print logs for debugging
+#        run: |
+#          sleep 20  # Wait for container to start
+#          az container logs --resource-group HCM-Staging --name hcmatrix-staging-container || true
+#          az container show --resource-group HCM-Staging --name hcmatrix-staging-container --query instanceView.events || true
