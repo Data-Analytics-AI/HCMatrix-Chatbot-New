@@ -86,21 +86,27 @@ jobs:
           docker push hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}
           docker push hcmatrix.azurecr.io/hcmatrix_staging_app:latest
 
-#      - name: Delete old container (if exists)
-#        run: az container delete --resource-group HCM-Staging --name hcmatrix-staging-container --yes || true
-#
-#      - name: Deploy container to Azure Container Instance (ACI)
-#        run: |
-#          az container create --resource-group HCM-Staging --name hcmatrix-staging-container \
-#            --image hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} \
-#            --cpu 4 --memory 8 \
-#            --registry-login-server hcmatrix.azurecr.io \
-#            --registry-username ${{ secrets.ACR_USERNAME }} \
-#            --registry-password ${{ secrets.ACR_PASSWORD }} \
-#            --dns-name-label hcmatrix-staging-app --ports 5000 --ip-address Public --os-type Linux
-#
-#      - name: Print logs for debugging
-#        run: |
-#          sleep 20  # Wait for container to start
-#          az container logs --resource-group HCM-Staging --name hcmatrix-staging-container || true
-#          az container show --resource-group HCM-Staging --name hcmatrix-staging-container --query instanceView.events || true
+      - name: Delete old container (if exists)
+        run: az container delete --resource-group HCM-Staging --name hcmatrix-staging-container --yes || true
+
+      - name: Deploy container to Azure Container Instance (ACI)
+        run: |
+          az container create --resource-group HCM-Staging --name hcmatrix-staging-container \
+            --image hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} \
+            --cpu 4 --memory 8 \
+            --registry-login-server hcmatrix.azurecr.io \
+            --registry-username ${{ secrets.ACR_USERNAME }} \
+            --registry-password ${{ secrets.ACR_PASSWORD }} \
+            --dns-name-label hcmatrix-staging-app --ports 5000 --ip-address Public --os-type Linux \
+            --environment-variables \
+              ADLS_CLIENT_SECRET=${{ secrets.ADLS_CLIENT_SECRET }} \
+              SPEECH_SERVICE_KEY=${{ secrets.SPEECH_SERVICE_KEY }} \
+              PINECONE_API_KEY=${{ secrets.PINECONE_API_KEY }} \
+              AZURE_OPENAI_API_KEY=${{ secrets.AZURE_OPENAI_API_KEY }} \
+              AZURE_EMBEDDING_API_KEY=${{ secrets.AZURE_EMBEDDING_API_KEY }}
+
+      - name: Print logs for debugging
+        run: |
+          sleep 20  # Wait for container to start
+          az container logs --resource-group HCM-Staging --name hcmatrix-staging-container || true
+          az container show --resource-group HCM-Staging --name hcmatrix-staging-container --query instanceView.events || true
