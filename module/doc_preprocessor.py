@@ -98,4 +98,4 @@ def store_chunks_in_chromadb(chunks, index_name: str):
     vectorstore = PineconeVectorStore(embedding=embedding_model, pinecone_api_key=pinecone_key, index_name=index_name)
     vectorstore.from_documents(chunks, index_name=index_name, embedding=embedding_model)
 
-    print(f"Chunks stored in PineconeDb with metadata including company_id and chunk_id.")
+    print("Chunks stored in PineconeDb with metadata including company_id and chunk_id.")
