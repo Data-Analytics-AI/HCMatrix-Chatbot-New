@@ -51,7 +51,7 @@ def execute(
     agent_executor = create_sql_agent(
         llm_4O, toolkit=cache_data,
         agent_type='openai-tools',
-        verbose=True,
+        verbose=False,
         max_execution_time=30,
         handle_parsing_errors=False)
     agent_end = time.time()

@@ -1,9 +1,11 @@
-# Ignore Python cache and virtual environments
+# Ignore Python cache and virtual environments and secrets
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .venv/
+.env
+.evn_example
 
 # Ignore logs and temporary files
 *.log

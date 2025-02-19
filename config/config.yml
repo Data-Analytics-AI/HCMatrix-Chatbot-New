@@ -28,11 +28,11 @@ production:
 
   pinecone_credentials:
     PINECONE_API_KEY: $PINECONE_API_KEY
-    index_name: "xkaggle-rag-project-astra"
+    index_name: "policy-docs"
     index_metric: "cosine"
     specs:
-      cloud: "aws"
-      region: "us-east-1"
+      cloud: "azure"
+      region: "eastus2"
     embedding_dim: 3072
 
   azure_oai_credentials:

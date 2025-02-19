@@ -1,4 +1,4 @@
-from langchain_community.vectorstores.chroma import Chroma
+from langchain_pinecone.vectorstores import PineconeVectorStore
 from langchain.prompts.chat import ChatPromptTemplate
 from langchain_openai import AzureChatOpenAI
 from langchain.chains import create_retrieval_chain
@@ -14,6 +14,8 @@ api_base = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_BA
 api_version = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_VERSION']
 vector_store_path = config['production']['vector_db_config']['path']
 layer_one_agent_prompt = config['production']['layer_one_agent_prompt']
+pinecone_key = config['production']['pinecone_credentials']['PINECONE_API_KEY']
+index_name = config['production']['pinecone_credentials']['index_name']
 
 # Embeddings Setup
 embedding_model = AzureOpenAIEmbeddings(
@@ -24,10 +26,13 @@ embedding_model = AzureOpenAIEmbeddings(
 )
 
 # Load the vector store
-vector_store = Chroma(persist_directory=vector_store_path, embedding_function=embedding_model)
+vector_store = PineconeVectorStore(
+    embedding=embedding_model,
+    pinecone_api_key=pinecone_key,
+    index_name=index_name)
 
 
-def layer_one_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id) -> str:
+async def layer_one_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id) -> str:
     # The implementation below is for chat models
 
     # Create the prompt template
@@ -49,9 +54,8 @@ def layer_one_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id) -> str
     # Step 4: Create a RetrievalQA chain
     question_answer_chain = create_stuff_documents_chain(llm_4o, prompt)
     rag_chain = create_retrieval_chain(retriever, question_answer_chain)
-
-    response = rag_chain.invoke({"input": user_query})
-    return response['answer']
+    result = await rag_chain.ainvoke({"input": user_query})
+    return result['answer']
 
 
 def layer_one_validator(user_query: str, llm_answer: str, llm_4o: AzureChatOpenAI) -> str:

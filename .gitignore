@@ -10,3 +10,7 @@ test2.py
 test3.py
 .DS_Store
 .venv/
+policy_docs/*
+mongo_db_test.py
+new_tools.py
+test_routing.py

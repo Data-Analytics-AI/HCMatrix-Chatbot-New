@@ -2,6 +2,7 @@ from pymongo import MongoClient
 import warnings
 from module.utils import timing_decorator
 from motor.motor_asyncio import AsyncIOMotorClient
+from collections import defaultdict
 
 warnings.filterwarnings("ignore")
 
@@ -69,3 +70,13 @@ class AsyncCosmosClient:
 
     async def fetch_one(self, query):
         return await self.collection.find_one(query, {"_id": 0})
+
+    async def fetch_and_group_by_key(self, query, group_key="chat_id"):
+        """Fetch multiple documents and group them by a specified key."""
+        cursor = self.collection.find(query, {"_id": 0})
+        documents = await cursor.to_list(length=None)
+        grouped_results = defaultdict(list)
+        for doc in documents:
+            key_value = doc.get(group_key, "undefined")  # Default to 'undefined' if key is missing
+            grouped_results[key_value].append(doc)
+        return dict(grouped_results)

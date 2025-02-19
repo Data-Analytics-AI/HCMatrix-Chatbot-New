@@ -1,7 +1,7 @@
 from langchain.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
-from langchain.vectorstores import Chroma
+from langchain_pinecone import PineconeVectorStore
 from langchain_openai.embeddings import AzureOpenAIEmbeddings
 from azure.storage.blob import BlobClient
 from urllib.parse import urlparse, unquote
@@ -15,6 +15,7 @@ from module.utils import config
 api_key = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_KEY']
 api_base = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_BASE']
 api_version = config['production']['azure_oai_credentials']['AZURE_EMBEDDING_API_VERSION']
+pinecone_key = config['production']['pinecone_credentials']['PINECONE_API_KEY']
 
 
 def download_pdf_and_chunk_with_metadata(
@@ -39,6 +40,10 @@ def download_pdf_and_chunk_with_metadata(
     # Generate file name from the URL
     file_name = os.path.basename(urlparse(url).path)
     file_name = unquote(file_name)
+
+    # Creates the directory (including parent directories if needed)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
     # Local file path
     local_file_path = os.path.join(directory, file_name)
@@ -74,12 +79,12 @@ def download_pdf_and_chunk_with_metadata(
     return updated_chunks
 
 
-def store_chunks_in_chromadb(chunks, persist_directory: str):
+def store_chunks_in_chromadb(chunks, index_name: str):
     """
     Store the given chunks in ChromaDB with their metadata.
 
     :param chunks: List of Document objects with metadata.
-    :param persist_directory: Directory to store ChromaDB.
+    :param index_name: The name of the index we want to store our data.
     :return: None
     """
     # Embeddings Setup
@@ -90,11 +95,7 @@ def store_chunks_in_chromadb(chunks, persist_directory: str):
         openai_api_version=api_version
     )
 
-    vector_store = Chroma.from_documents(
-        documents=chunks,
-        embedding=embedding_model,
-        persist_directory=persist_directory
-    )
+    vectorstore = PineconeVectorStore(embedding=embedding_model, pinecone_api_key=pinecone_key, index_name=index_name)
+    vectorstore.from_documents(chunks, index_name=index_name, embedding=embedding_model)
 
-    vector_store.persist()
-    print(f"Chunks stored in ChromaDB at {persist_directory} with metadata including company_id and chunk_id.")
+    print(f"Chunks stored in PineconeDb with metadata including company_id and chunk_id.")

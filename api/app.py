@@ -48,7 +48,6 @@ async_client = AsyncCosmosClient(
     database_name="hcm-chatbot", collection_name="user-chat"
 )  # ✅ Async Client
 
-
 app = FastAPI()
 origins = [
     "http://48.217.20.68:5000",
@@ -140,7 +139,7 @@ async def generate_audio(text: str):
         async def audio_stream():
             audio_bytes = await wrapper.synthesize(text)
             yield audio_bytes  # Stream audio in chunks
-
+        print("Streaming audio response ...")
         return StreamingResponse(audio_stream(), media_type="audio/mpeg")
 
     except Exception as e:
@@ -150,11 +149,11 @@ async def generate_audio(text: str):
 
 @app.get("/chat-history", status_code=status.HTTP_200_OK)
 async def fetch_chat_id(
-    chat_id: str = Query(..., description="Chat ID from FE"),
-    employee_id: str = Query(
-        ..., description="Employee ID to retrieve chat history from"
-    ),
-    company_id: str = Query(..., description="Employee company Id"),
+        chat_id: str = Query(..., description="Chat ID from FE"),
+        employee_id: str = Query(
+            ..., description="Employee ID to retrieve chat history from"
+        ),
+        company_id: str = Query(..., description="Employee company Id"),
 ) -> List[ChatResponseSchema]:
     """
     The purpose of this function is to fetch the history of the conversations between
@@ -171,11 +170,11 @@ async def fetch_chat_id(
 
 @app.get("/all-chat-history", status_code=status.HTTP_200_OK)
 async def fetch_all_chat_id(
-    employee_id: str = Query(
-        ..., description="Employee ID to retrieve chat history from"
-    ),
-    company_id: str = Query(..., description="Employee company Id"),
-) -> List[ChatResponseSchema]:
+        employee_id: str = Query(
+            ..., description="Employee ID to retrieve chat history from"
+        ),
+        company_id: str = Query(..., description="Employee company Id"),
+):
     """
     The purpose of this function is to fetch all the history of the conversations between
     the user and the assistant so that all conversations are in context.
@@ -184,7 +183,8 @@ async def fetch_all_chat_id(
         "employee_metadata.id": employee_id,
         "employee_metadata.company_id": company_id,
     }
-    return await async_client.fetch_many(query)
+    #  -> List[ChatResponseSchema]
+    return await async_client.fetch_and_group_by_key(query)
 
 
 @app.on_event("shutdown")

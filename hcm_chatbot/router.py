@@ -50,17 +50,14 @@ async def chatbot_entry_execution(
         chatbot_cache,
     ).strip()
     # .strip() is added to improve consistency for response
-
-    if sql_agent_response == (
-        "Sorry, couldn't get the best response to your query, kindly reach out to your HR "
-        "department for the best response to your query or retry."
-    ):
+    fallback_response = ("Sorry, couldn't get the best response to your query. Kindly reach out to your HR department "
+                         "for the best response to your query or retry.")
+    if sql_agent_response == fallback_response:
         print("Could not respond to question. Using the SQL layer.")
         print("Generating response from the RAG layer.")
-        answer = layer_one_agent(
+        answer = await layer_one_agent(
             user_query, llm_4o, company_id=employee_metadata.company_id
         )
-        print(f"Response: \n {answer}")
         return answer
 
     print("SQL layer sufficient to generate response.")

@@ -43,3 +43,4 @@ Review the replicas configuration in the deployment manifest and ensure it match
 # TODO: Remove all unnecessary python files.
 # TODO: The mongoDB url should be stored in the .env
 # TODO: Handle the benchmark time issue when running the test in GitHub actions environment.
+# TODO: Consider using a smaller embedding model for faster retrieval. Alternatively, we could move away from serverless to pod for pinecone of still slow.
