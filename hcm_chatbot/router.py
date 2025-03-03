@@ -38,7 +38,5 @@ async def chatbot_entry_execution(
         return sql_agent_response.strip()
 
     # Instead, it should use the rag layer
-    answer = await rag_layer_agent(
-            user_query, llm_4o, company_id=employee_metadata.company_id
-        )
+    answer = await rag_layer_agent(user_query, llm_4o, company_id=employee_metadata.company_id)
     return answer

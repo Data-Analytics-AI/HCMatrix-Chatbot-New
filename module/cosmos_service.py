@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 import warnings
 from module.utils import config
-from module.utils import timing_decorator
+# from module.utils import timing_decorator
 from motor.motor_asyncio import AsyncIOMotorClient
 from collections import defaultdict
 import asyncio

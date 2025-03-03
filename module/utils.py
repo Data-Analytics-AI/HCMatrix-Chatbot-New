@@ -28,7 +28,6 @@ def load_config_with_env(yaml_path):
     secret_client = SecretClient(vault_url=key_vault_url, credential=credential)
 
     # Recursively resolve placeholders
-    # Recursively resolve placeholders
     def resolve_placeholders(obj):
         if isinstance(obj, dict):
             return {k: resolve_placeholders(v) for k, v in obj.items()}
