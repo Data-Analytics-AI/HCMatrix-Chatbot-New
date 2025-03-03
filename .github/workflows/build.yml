@@ -28,6 +28,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+      KEY_VAULT_NAME: ${{ secrets.KEY_VAULT_NAME }}
 
     steps:
       - name: Checkout repository
