@@ -1,17 +1,16 @@
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, ORJSONResponse
 from fastapi import FastAPI, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
-import asyncio
 import uuid
 import time
-from model.azure_oai import AzureOAI
-from services.cache_service import LRUCache
+from module.azure_oai import AzureOAI
+from module.cache_service import LRUCache
 from module.utils import config
-from services.cosmos_service import AsyncCosmosClient
+from module.cosmos_service import AsyncCosmosClient
 from hcm_chatbot.router import chatbot_entry_execution
-from data_preprocessing.gold_layer import GoldLayerUtils
-from api.schema import ChatInputSchema, ChatResponseSchema
+from module.gold_layer import GoldLayerUtilsAsync
+from api.schema import ChatInputSchema, ChatResponseSchema, AudioInput
 from module.spk import SpeechSynthesizerWrapper
 from azure.cognitiveservices import speech as speechsdk
 
@@ -22,19 +21,15 @@ from azure.cognitiveservices import speech as speechsdk
 azure_oai_conn = AzureOAI("4O")
 llm_4O = azure_oai_conn()
 
-# speech_out = spk.HCMSpeechOut()
 chatbot_cache = LRUCache(
     capacity=120
 )  # This cache is ephemeral to the life of the application.
 
 # initialize connection with DB to read employee sql files
-
 adls_credentials_params = config["production"]["adls_credentials"]
-gold_container_name = config["production"]["adls_credentials"][
-    "goldlayer_container_name"
-]
+gold_container_name = config["production"]["adls_credentials"]["goldlayer_container_name"]
 gold_account_name = config["production"]["adls_credentials"]["goldlayer_account_name"]
-gold_adls_conn = GoldLayerUtils(
+gold_adls_conn = GoldLayerUtilsAsync(
     gold_container_name, adls_credentials_params, gold_account_name
 )
 
@@ -43,6 +38,19 @@ speech_config = speechsdk.SpeechConfig(
     subscription=config["production"]["speech_service"]["key"], region="eastus"
 )
 wrapper = SpeechSynthesizerWrapper(speech_config)
+CHUNK_SIZE = 4096  # 4KB per chunk
+
+
+async def audio_stream(text: str):
+    """Streams the audio as it's being synthesized."""
+    audio_bytes = await wrapper.synthesize(text)  # Directly streaming from Azure
+
+    if not audio_bytes:
+        raise HTTPException(status_code=500, detail="Audio synthesis failed")
+
+    for i in range(0, len(audio_bytes), CHUNK_SIZE):
+        yield audio_bytes[i:i + CHUNK_SIZE]
+
 
 async_client = AsyncCosmosClient(
     database_name="hcm-chatbot", collection_name="user-chat"
@@ -75,13 +83,13 @@ print("Initializing API....")
 @app.get("/", status_code=status.HTTP_200_OK)
 def home():
     return {
-        "status": "HCMatrix Chatbot is up! Endpoints are `/chat` and `/chat-history`."
+        "status": "HCMatrix Chatbot is up! Endpoints are `/chat`, `/audio`, `/chat-history` and `all-chat-history`."
     }
 
 
 # ===================== Chatbot API (Text Response Only) =======================
-@app.post("/chat", status_code=status.HTTP_200_OK, response_model=ChatResponseSchema)
-async def chatbot(request_model: ChatInputSchema) -> ChatResponseSchema:
+@app.post("/chat", status_code=status.HTTP_200_OK, response_model=ChatResponseSchema, response_class=ORJSONResponse)
+async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
     """Returns chatbot response (text only, no audio)."""
 
     if not request_model.user_query.strip():
@@ -112,11 +120,13 @@ async def chatbot(request_model: ChatInputSchema) -> ChatResponseSchema:
         print("*" * 20)
         print(response_data)
 
-        # 🔹 Store chat history asynchronously in the background
-        asyncio.create_task(store_chat_history(response_data))
+        # # 🔹 Store chat history asynchronously in the background
+        # asyncio.create_task(store_chat_history(response_data))
 
-        # return JSONResponse(content=response_data)
-        return response_data
+        # 🔹 Add to MongoDB buffer
+        await async_client.add_to_buffer(response_data)
+
+        return ORJSONResponse(response_data)
 
     except Exception as e:
         print(f"Unexpected error: {e}")
@@ -132,15 +142,15 @@ async def store_chat_history(chat_data: dict):
 
 
 # ===================== Audio Synthesis API (Separate) =======================
-@app.get("/audio", status_code=status.HTTP_200_OK)
-async def generate_audio(text: str):
-    """Generates and streams speech audio from text."""
+@app.post("/audio", status_code=200)
+async def generate_audio(input_data: AudioInput):
+    """Generates and streams speech audio."""
+    if not input_data.text.strip():
+        raise HTTPException(status_code=400, detail="Text cannot be empty")
+
     try:
-        async def audio_stream():
-            audio_bytes = await wrapper.synthesize(text)
-            yield audio_bytes  # Stream audio in chunks
         print("Streaming audio response ...")
-        return StreamingResponse(audio_stream(), media_type="audio/mpeg")
+        return StreamingResponse(audio_stream(input_data.text), media_type="audio/mpeg")
 
     except Exception as e:
         print(f"Error generating audio: {e}")
@@ -188,6 +198,8 @@ async def fetch_all_chat_id(
 
 
 @app.on_event("shutdown")
-def shutdown_event():
+async def shutdown_event():
     """Ensure connection closes when the API server stops."""
     wrapper.close_connection()
+    await async_client.on_shutdown()  # Ensure clean shutdown
+    await gold_adls_conn.close()  # 🔥 Ensure ADLS session cleanup

@@ -11,23 +11,27 @@ production:
     path: "new_vectorstore"  # Relative path
 
   speech_service:
-    key: $SPEECH_SERVICE_KEY
+    key: $SPEECH-SERVICE-KEY
 
   adls_credentials:
     account_name: "transformedhcmatrixadls1"
     client_id: "76bd4cdb-7d2c-495a-99ad-ceafd1466644"
-    client_secret: $ADLS_CLIENT_SECRET
+    client_secret: $CLIENT_SECRET
     tenant_id: "ba130eca-3030-48e1-9089-c979293aeb70"
     goldlayer_container_name: "goldcontainerhcmatrix"
     goldlayer_account_name: "goldstoragehcmatrixx"
     stagging_adls_name: "stagingadlshcmatrix1"
+    key_vault_name: $KEY_VAULT_NAME
 
   mysql_credentials:
     auth_db_name: "hcmatrix-authentication-db"
     utils_db_name: "hcmatrix-utility-db"
 
+  mongo_database:
+    connection_string: $MONGO-DB-CONNECTION-STRING
+
   pinecone_credentials:
-    PINECONE_API_KEY: $PINECONE_API_KEY
+    PINECONE_API_KEY: $PINECONE-API-KEY
     index_name: "policy-docs"
     index_metric: "cosine"
     specs:
@@ -36,7 +40,7 @@ production:
     embedding_dim: 3072
 
   azure_oai_credentials:
-    AZURE_OPENAI_API_KEY: $AZURE_OPENAI_API_KEY
+    AZURE_OPENAI_API_KEY: $AZURE-OPENAI-API-KEY
     AZURE_OPENAI_ENDPOINT: "https://hcmatrix-openai.openai.azure.com/"
     4O_API_VERSION: "2024-02-01"
     4O_AZURE_DEPLOYMENT: "hcmatrix-llm-4o"
@@ -48,7 +52,7 @@ production:
     AZURE_EMBEDDING_DEPLOYMENT: "hcmatrix-embeddings"
     AZURE_EMBEDDING_API_VERSION: "2023-05-15"
     AZURE_EMBEDDING_API_BASE: "https://hcmatrix-openai.openai.azure.com/openai/deployments/hcmatrix-embeddings/embeddings?api-version=2023-05-15"
-    AZURE_EMBEDDING_API_KEY: $AZURE_EMBEDDING_API_KEY
+    AZURE_EMBEDDING_API_KEY: $AZURE-EMBEDDING-API-KEY
 
   layer_one_agent_prompt: |
     You are an AI assistant developed by Snapnet for various organizational uses. 

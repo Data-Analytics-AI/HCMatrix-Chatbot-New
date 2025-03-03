@@ -27,11 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: ${{ inputs.environment }}
     env:
-      ADLS_CLIENT_SECRET: ${{ secrets.ADLS_CLIENT_SECRET }}
-      SPEECH_SERVICE_KEY: ${{ secrets.SPEECH_SERVICE_KEY }}
-      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
-      AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
-      AZURE_EMBEDDING_API_KEY: ${{ secrets.AZURE_EMBEDDING_API_KEY }}
+      CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
 
     steps:
       - name: Checkout repository
@@ -107,6 +103,22 @@ jobs:
 
       - name: Print logs for debugging
         run: |
-          sleep 20  # Wait for container to start
-          az container logs --resource-group HCM-Staging --name hcmatrix-staging-container || true
-          az container show --resource-group HCM-Staging --name hcmatrix-staging-container --query instanceView.events || true
+          sleep 20  # Wait for the container to start
+
+          # Capture container logs and status
+          LOGS=$(az container logs --resource-group HCM-Staging --name hcmatrix-staging-container || true)
+          EVENTS=$(az container show --resource-group HCM-Staging --name hcmatrix-staging-container --query instanceView.events || true)
+
+          echo "📌 Container Events:"
+          echo "$EVENTS"
+
+          # Check if logs are empty
+          if [[ -z "$LOGS" ]]; then
+              echo "::error title=Container Logs Missing::No logs found. The container might have failed to start."
+              exit 1  # ❌ Fail the GitHub Action
+          else
+              echo "✅ Container Logs:"
+              echo "$LOGS"
+          fi
+        shell: bash
+

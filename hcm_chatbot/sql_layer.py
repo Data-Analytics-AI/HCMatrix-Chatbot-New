@@ -1,19 +1,20 @@
 import os
-from services.cache_service import LRUCache
+from module.cache_service import LRUCache
 from langchain_openai import AzureChatOpenAI
 from langchain_community.utilities import SQLDatabase
 from langchain.prompts.chat import ChatPromptTemplate
-from data_preprocessing.gold_layer import GoldLayerUtils
+from module.gold_layer import GoldLayerUtilsAsync
 from langchain_community.agent_toolkits import create_sql_agent
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 import time
+import asyncio
 
 data_dir = "temp_data/"
 
 
-def execute(
+async def sql_layer_agent(
         company_id: str, employee_id: str, query: str,
-        llm_4O: AzureChatOpenAI, gold_adls_conn: GoldLayerUtils,
+        llm_4O: AzureChatOpenAI, gold_adls_conn: GoldLayerUtilsAsync,
         chatbot_cache: LRUCache):
     start_time = time.time()
     company_data_dir = os.path.join(data_dir, f"cp_{company_id}")
@@ -31,13 +32,13 @@ def execute(
         print('No cache available or cache expired. Pulling from ADLS...')
         adls_start = time.time()
 
-        sql_db = gold_adls_conn.read_file_from_adls(employee_sql_db)
+        sql_db = await gold_adls_conn.read_file_from_adls(employee_sql_db)
 
         adls_end = time.time()
         print(f"⏳ ADLS Fetch Time: {adls_end - adls_start:.2f} sec")
 
         db_start = time.time()
-        employee_db = SQLDatabase.from_uri(f"sqlite:///{sql_db}")
+        employee_db = await asyncio.to_thread(SQLDatabase.from_uri, f"sqlite:///{sql_db}")
         print(employee_db.get_usable_table_names())
         db_end = time.time()
         print(f"⏳ SQLite Init Time: {db_end - db_start:.2f} sec")
@@ -76,8 +77,8 @@ def execute(
         ]
     )
     query_start = time.time()
-    agent_response = agent_executor.invoke(
-        query_prompt.format(employee_id=employee_id, user_query=query)
+    agent_response = await asyncio.to_thread(
+        agent_executor.invoke, query_prompt.format(employee_id=employee_id, user_query=query)
     )
     query_end = time.time()
     print(f"⏳ Query Execution Time: {query_end - query_start:.2f} sec")

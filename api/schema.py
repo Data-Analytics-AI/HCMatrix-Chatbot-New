@@ -24,6 +24,10 @@ class ChatResponseSchema(BaseModel):
     chat_id: str
 
 
+class AudioInput(BaseModel):
+    text: str
+
+
 class ChatHistory(BaseModel):
     chat_id: str
     employee_id: str

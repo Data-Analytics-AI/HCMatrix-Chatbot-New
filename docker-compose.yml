@@ -1,9 +1,0 @@
-
-version: '3.9'
-
-services:
-  hcm_chatbot:
-    image: hcmatrixcontainerregistry.azurecr.io/hcmatrix-chatbot:latest
-    ports:
-      - 5000:5000
-    restart: always
