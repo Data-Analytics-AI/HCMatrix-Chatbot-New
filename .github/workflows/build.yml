@@ -95,9 +95,8 @@ jobs:
             --registry-username ${{ secrets.ACR_USERNAME }} \
             --registry-password ${{ secrets.ACR_PASSWORD }} \
             --dns-name-label hcmatrix-staging-app --ports 5000 --ip-address Public --os-type Linux \
-            --environment-variables \
-              CLIENT_SECRET=${{ secrets.CLIENT_SECRET }} \
-              KEY_VAULT_NAME=${{ secrets.KEY_VAULT_NAME }} \
+            --secure-environment-variables CLIENT_SECRET=${{ secrets.CLIENT_SECRET }} KEY_VAULT_NAME=${{ secrets.KEY_VAULT_NAME }}
+
 
       - name: Print logs for debugging
         run: |
