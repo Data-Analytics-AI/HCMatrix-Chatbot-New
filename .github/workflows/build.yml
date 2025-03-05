@@ -83,12 +83,37 @@ jobs:
           docker push hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}
           docker push hcmatrix.azurecr.io/hcmatrix_staging_app:latest
 
-      - name: Delete old container (if exists)
-        run: az container delete --resource-group HCM-Staging --name hcmatrix-staging-container --yes || true
+  deploy:
+    name: Deploy to Azure
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment: ${{ inputs.environment }}
 
-      - name: Deploy container to Azure Container Instance (ACI)
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set AKS Variables
         run: |
-          az container create --resource-group HCM-Staging --name hcmatrix-staging-container \
+          if [[ "${{ inputs.environment }}" == "production" ]]; then
+            echo "RESOURCE_GROUP=HCM-Production" >> $GITHUB_ENV
+            echo "CLUSTER_NAME=hcmatrix-prod-cluster" >> $GITHUB_ENV
+            echo "DEPLOYMENT_TYPE=AKS" >> $GITHUB_ENV
+          else
+            echo "RESOURCE_GROUP=HCM-Staging" >> $GITHUB_ENV
+            echo "DEPLOYMENT_TYPE=ACI" >> $GITHUB_ENV
+          fi
+
+      - name: Deploy to ACI (Staging Only)
+        if: env.DEPLOYMENT_TYPE == 'ACI'
+        run: |
+          az container delete --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container --yes || true
+          az container create --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container \
             --image hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} \
             --cpu 4 --memory 8 \
             --registry-login-server hcmatrix.azurecr.io \
@@ -97,25 +122,51 @@ jobs:
             --dns-name-label hcmatrix-staging-app --ports 5000 --ip-address Public --os-type Linux \
             --secure-environment-variables CLIENT_SECRET=${{ secrets.CLIENT_SECRET }} KEY_VAULT_NAME=${{ secrets.KEY_VAULT_NAME }}
 
-
-      - name: Print logs for debugging
+      - name: Deploy to AKS (Production Only)
+        if: env.DEPLOYMENT_TYPE == 'AKS'
         run: |
-          sleep 20  # Wait for the container to start
-
-          # Capture container logs and status
-          LOGS=$(az container logs --resource-group HCM-Staging --name hcmatrix-staging-container || true)
-          EVENTS=$(az container show --resource-group HCM-Staging --name hcmatrix-staging-container --query instanceView.events || true)
-
-          echo "📌 Container Events:"
-          echo "$EVENTS"
-
-          # Check if logs are empty
-          if [[ -z "$LOGS" ]]; then
-              echo "::error title=Container Logs Missing::No logs found. The container might have failed to start."
-              exit 1  # ❌ Fail the GitHub Action
+          az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
+          
+          kubectl create namespace hcmatrix-prod --dry-run=client -o yaml | kubectl apply -f -
+          
+          if kubectl get secret hcm-secrets -n hcmatrix-prod; then
+            echo "Secret already exists. Skipping creation..."
           else
-              echo "✅ Container Logs:"
-              echo "$LOGS"
+            kubectl create secret generic hcm-secrets -n hcmatrix-prod \
+              --from-literal=CLIENT_SECRET=${{ secrets.CLIENT_SECRET }} \
+              --from-literal=KEY_VAULT_NAME=${{ secrets.KEY_VAULT_NAME }}
+          fi
+          
+          kubectl apply -f k8s/deployment.yml -n hcmatrix-prod
+          kubectl apply -f k8s/service.yml -n hcmatrix-prod
+
+      - name: Scale AKS Cluster (Production Only)
+        if: env.DEPLOYMENT_TYPE == 'AKS'
+        run: |
+          az aks update --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --min-count 4 --max-count 8 --enable-cluster-autoscaler
+          
+          kubectl rollout status deployment/hcmatrix-k8s-deployment -n hcmatrix-prod
+
+      - name: Print Logs for Debugging
+        run: |
+          sleep 20  # Wait for pods to start
+
+          if [[ "${{ env.DEPLOYMENT_TYPE }}" == "AKS" ]]; then
+              echo "📌 Checking AKS Pods:"
+              kubectl get pods -n hcmatrix-prod
+          else
+              LOGS=$(az container logs --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container || true)
+              EVENTS=$(az container show --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container --query instanceView.events || true)
+
+              echo "📌 Container Events:"
+              echo "$EVENTS"
+
+              if [[ -z "$LOGS" ]]; then
+                  echo "::error title=Container Logs Missing::No logs found. The container might have failed to start."
+                  exit 1
+              else
+                  echo "✅ Container Logs:"
+                  echo "$LOGS"
+              fi
           fi
         shell: bash
-

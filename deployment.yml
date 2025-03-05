@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hcmatrix-k8s-deployment
+spec:
+  replicas: 4
+  selector:
+    matchLabels:
+      app: hcmatrix-chatbot
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: hcmatrix-chatbot
+    spec:
+      restartPolicy: Always
+      tolerations:
+        - key: "CriticalAddonsOnly"
+          operator: "Exists"
+          effect: "NoSchedule"
+      containers:
+        - name: hcm-container
+          image: hcmatrix.azurecr.io/hcmatrix_staging_app:latest
+          ports:
+            - containerPort: 5000
+          resources:
+            requests:
+              cpu: "250m"  # Request 0.25 CPU
+              memory: "512Mi"  # Request 512MB RAM
+            limits:
+              cpu: "500m"  # Limit to 0.5 CPU
+              memory: "1Gi"  # Limit to 1GB RAM
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 5000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          env:
+            - name: CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: hcm-secrets
+                  key: CLIENT_SECRET
+            - name: KEY_VAULT_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: hcm-secrets
+                  key: KEY_VAULT_NAME
+      imagePullSecrets:
+        - name: acr-secret # Secrets created manually
+      
