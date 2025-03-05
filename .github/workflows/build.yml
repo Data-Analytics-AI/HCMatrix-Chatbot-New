@@ -137,8 +137,8 @@ jobs:
               --from-literal=KEY_VAULT_NAME=${{ secrets.KEY_VAULT_NAME }}
           fi
           
-          kubectl apply -f k8s/deployment.yml -n hcmatrix-prod
-          kubectl apply -f k8s/service.yml -n hcmatrix-prod
+          kubectl apply -f deployment.yml -n hcmatrix-prod
+          kubectl apply -f service.yml -n hcmatrix-prod
 
       - name: Scale AKS Cluster (Production Only)
         if: env.DEPLOYMENT_TYPE == 'AKS'
