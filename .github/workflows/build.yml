@@ -102,7 +102,7 @@ jobs:
         run: |
           if [[ "${{ inputs.environment }}" == "production" ]]; then
             echo "RESOURCE_GROUP=HCM-Production" >> $GITHUB_ENV
-            echo "CLUSTER_NAME=hcmatrix-prod-cluster" >> $GITHUB_ENV
+            echo "CLUSTER_NAME=hcmatrix-aks" >> $GITHUB_ENV
             echo "DEPLOYMENT_TYPE=AKS" >> $GITHUB_ENV
           else
             echo "RESOURCE_GROUP=HCM-Staging" >> $GITHUB_ENV
