@@ -71,7 +71,7 @@ jobs:
         run: az account show
 
       - name: Log in to Azure Container Registry
-        run: az acr login --name hcmatrix --username ${{ secrets.ACR_USERNAME }}
+        run: az acr login --name hcmatrix --username ${{ secrets.ACR_USERNAME }} --password ${{ secrets.ACR_PASSWORD }}
 
       - name: Build and tag Docker image
         run: |
