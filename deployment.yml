@@ -36,13 +36,14 @@ spec:
               memory: "1Gi"  # Limit to 1GB RAM
           livenessProbe:
             httpGet:
-              path: /health
+              path: /
               port: 5000
             initialDelaySeconds: 5
             periodSeconds: 10
+
           readinessProbe:
             httpGet:
-              path: /ready
+              path: /
               port: 5000
             initialDelaySeconds: 3
             periodSeconds: 5
@@ -59,4 +60,3 @@ spec:
                   key: KEY_VAULT_NAME
       imagePullSecrets:
         - name: acr-secret # Secrets created manually
-      
