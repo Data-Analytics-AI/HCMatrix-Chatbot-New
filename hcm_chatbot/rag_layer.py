@@ -44,8 +44,19 @@ retriever_cache = {}
 chain_cache = {}
 
 
-def get_retriever(company_id):
-    """Retrieve or create a retriever for a given company_id."""
+def get_retriever(company_id: str):
+    """Retrieve or create a retriever for a given company ID.
+
+    This function checks if a retriever exists in the cache for the specified
+    `company_id`. If not, it creates a new retriever from the vector store,
+    using similarity-based search with a filter for the given company.
+
+    Args:
+        company_id (str): The unique identifier of the company.
+
+    Returns:
+        object: A retriever instance configured for the specified company.
+        """
     if company_id not in retriever_cache:
         retriever_cache[company_id] = vector_store.as_retriever(
             search_type="similarity",
@@ -54,8 +65,20 @@ def get_retriever(company_id):
     return retriever_cache[company_id]
 
 
-def get_rag_chain(company_id, llm_4o):
-    """Retrieve or create a RAG chain for a given company_id."""
+def get_rag_chain(company_id: str, llm_4o: AzureChatOpenAI):
+    """Retrieve or create a RAG (Retrieval-Augmented Generation) chain for a given company ID.
+
+        This function checks if a RAG chain exists in the cache for the specified `company_id`.
+        If not, it retrieves or creates a retriever, then constructs a retrieval chain using
+        a question-answering model.
+
+        Args:
+            company_id (str): The unique identifier of the company.
+            llm_4o (object): The language model used for generating responses.
+
+        Returns:
+            object: A retrieval-augmented generation (RAG) chain for the specified company.
+        """
     if company_id not in chain_cache:
         retriever = get_retriever(company_id)  # Get cached retriever
         question_answer_chain = create_stuff_documents_chain(llm_4o, prompt)
@@ -63,7 +86,22 @@ def get_rag_chain(company_id, llm_4o):
     return chain_cache[company_id]
 
 
-async def rag_layer_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id) -> str:
+async def rag_layer_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id: str) -> str:
+    """Processes a user query using a Retrieval-Augmented Generation (RAG) chain.
+
+    This function retrieves or creates a cached RAG chain for the specified company ID
+    and asynchronously invokes it with the user query to generate a response.
+
+    Args:
+        user_query (str): The input query from the user.
+        llm_4o (AzureChatOpenAI): The language model used for generating responses.
+        company_id (str): The unique identifier of the company.
+
+    Returns:
+        str: The generated response from the RAG chain.
+
+    """
     rag_chain = get_rag_chain(company_id, llm_4o)  # Get cached chain
     result = await rag_chain.ainvoke({"input": user_query})
     return result['answer']
+

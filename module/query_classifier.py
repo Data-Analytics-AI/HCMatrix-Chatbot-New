@@ -45,7 +45,20 @@ system_prompt = SystemMessage(
 
 
 def classify_query(func):
-    """Classify the user query as either 'SQL' or 'RAG'."""
+    """Classifies the user query as either 'SQL' or 'RAG'.
+
+    This decorator uses an AI model to analyze the user query and determine
+    whether it should be processed using the SQL or RAG (Retrieval-Augmented
+    Generation) layer. The classification result is then passed as an argument
+    to the decorated function.
+
+    Args:
+        func (Callable): The function to be wrapped, which processes the query.
+
+    Returns:
+        Callable: The wrapped function that classifies the query and routes it
+        accordingly.
+    """
 
     @wraps(func)
     async def wrapper(user_query, *args, **kwargs):

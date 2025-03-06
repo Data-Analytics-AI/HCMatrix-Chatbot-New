@@ -12,9 +12,38 @@ warnings.filterwarnings("ignore")
 
 
 class CosmosClient:
+    """
+    A singleton-style MongoDB client for interacting with a specific database and collection.
+
+    This class ensures that only one connection is established to the MongoDB instance and reuses
+    the same connection for all instances of the `CosmosClient`.
+
+    Attributes:
+        _cached_client (MongoClient): A class-level cached connection to MongoDB.
+        database_name (str): The name of the database to connect to.
+        collection_name (str): The name of the collection to interact with.
+        client (MongoClient): An instance-level reference to the cached MongoDB client.
+        collection (Collection): A reference to the specified MongoDB collection.
+
+    Methods:
+        insert_one(document: dict): Inserts a single document into the collection.
+        fetch_many(query: dict): Retrieves multiple documents matching the query.
+        fetch_one(query: dict): Retrieves a single document matching the query.
+    """
+
     _cached_client = None  # 🔹 Class variable to store cached connection
 
-    def __init__(self, database_name, collection_name):
+    def __init__(self, database_name: str, collection_name: str):
+        """
+        Initializes the CosmosClient for a specific MongoDB database and collection.
+
+        If no connection has been established yet, it initializes a new connection
+        and caches it for future use.
+
+        Args:
+            database_name (str): The name of the MongoDB database.
+            collection_name (str): The name of the MongoDB collection.
+        """
         self.database_name = database_name
         self.collection_name = collection_name
 
@@ -25,27 +54,70 @@ class CosmosClient:
         self.collection = self.client[self.database_name][self.collection_name]
 
     def _establish_connection(self):
+        """
+        Establishes a connection to MongoDB using the connection string from the configuration.
+
+        Returns:
+            MongoClient: A MongoDB client instance.
+        """
         connection_string = (
             config['production']['mongo_database']['connection_string']
         )
         return MongoClient(connection_string)
 
-    def insert_one(self, document):
+    def insert_one(self, document: dict):
+        """
+        Inserts a single document into the MongoDB collection.
+
+        Args:
+            document (dict): The document to insert.
+        """
         self.collection.insert_one(document)
 
-    def fetch_many(self, query):
+    def fetch_many(self, query: dict):
+        """
+        Retrieves multiple documents from the collection that match the query.
+
+        Args:
+            query (dict): A dictionary specifying the query conditions.
+
+        Returns:
+            Cursor: A cursor to iterate over the matching documents.
+        """
         return self.collection.find(query)
 
-    def fetch_one(self, query):
+    def fetch_one(self, query: dict):
+        """
+        Retrieves a single document from the collection that matches the query.
+
+        Args:
+            query (dict): A dictionary specifying the query conditions.
+
+        Returns:
+            dict or None: The first matching document, or None if no match is found.
+        """
         return self.collection.find_one(query)
 
 
 class AsyncCosmosClient:
+    """
+        An asynchronous MongoDB client for efficient batch inserts and data retrieval.
+        This client supports buffering of documents before inserting them in bulk,
+        reducing the number of direct database writes to improve performance.
+        """
     _cached_client = None  # 🔹 Cached MongoDB client
     _buffer = deque()  # 🔹 Buffer for batch inserts
     _buffer_lock = asyncio.Lock()  # 🔹 Lock to prevent race conditions
 
     def __init__(self, database_name: str, collection_name: str, buffer_size=30, flush_interval=900):
+        """
+        Initializes the async MongoDB client and starts a background task for periodic flushing.
+
+        :param database_name: Name of the MongoDB database.
+        :param collection_name: Name of the collection to store/retrieve data.
+        :param buffer_size: Maximum buffer size before auto-flush to MongoDB.
+        :param flush_interval: Time interval (in seconds) for automatic flushing of the buffer.
+            """
         self.database_name = database_name
         self.collection_name = collection_name
         self.BUFFER_SIZE = buffer_size  # 🔹 Max batch size before auto-flush
@@ -61,6 +133,11 @@ class AsyncCosmosClient:
         self._flush_task = asyncio.create_task(self._flush_loop())
 
     def _get_connection_string(self) -> str:
+        """
+        Retrieves the MongoDB connection string from configuration.
+
+        :return: MongoDB's connection string.
+            """
         return (
             config['production']['mongo_database']['connection_string']
         )
@@ -79,7 +156,13 @@ class AsyncCosmosClient:
         return await self.collection.find_one(query, {"_id": 0})
 
     async def fetch_and_group_by_key(self, query, group_key="chat_id"):
-        """Fetch multiple documents and group them by a specified key."""
+        """
+        Fetches multiple documents and groups them by a specified key.
+
+        :param query: Query dictionary to filter documents.
+        :param group_key: Key to group results by (default is "chat_id").
+        :return: Dictionary where keys are unique values of group_key, and values are lists of documents.
+        """
         cursor = self.collection.find(query, {"_id": 0})
         documents = await cursor.to_list(length=None)
         grouped_results = defaultdict(list)
@@ -89,7 +172,12 @@ class AsyncCosmosClient:
         return dict(grouped_results)
 
     async def add_to_buffer(self, document: dict):
-        """Add a document to the buffer for batch storage."""
+        """
+        Adds a document to the buffer for batch insertion.
+        If the buffer reaches its defined capacity, it triggers an automatic flush.
+
+        :param document: Document to be added to the buffer.
+        """
         async with self._buffer_lock:
             self._buffer.append(document)
             print(f"🟡 Added document to buffer. Current size: {len(self._buffer)}")  # Debugging
@@ -104,12 +192,18 @@ class AsyncCosmosClient:
                 # await self.flush_to_db()  # Flush immediately if full
 
     async def batch_insert(self, documents: List[dict]):
-        """Bulk insert a batch of documents into MongoDB."""
+        """
+        Inserts multiple documents into MongoDB in a single operation.
+
+        :param documents: List of dictionaries representing the documents to be inserted.
+        """
         if documents:
             await self.collection.insert_many(documents)
 
     async def flush_to_db(self):
-        """Flush the buffered chat history to MongoDB."""
+        """
+        Flushes the buffered documents to MongoDB and clears the buffer after a successful insert.
+        """
         async with self._buffer_lock:
             if self._buffer:
                 batch_data = list(self._buffer)

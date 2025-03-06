@@ -19,10 +19,23 @@ async def chatbot_entry_execution(
         layer: str
 ) -> str:
     """
-    this functions routes the user query to a layered route:
-    the first route is the db, then external files, then chatgpt.
+    Routes the user query to the appropriate processing layer based on classification.
 
-    Args: user query and employee_metadata structure can be found in API schema class
+    This function relies on the `classify_query` decorator to first categorize the user
+    query as either SQL-related or RAG-related. If classified as SQL-related, the query
+    is handled by the SQL agent. Otherwise, it is processed using the retrieval-augmented
+    generation (RAG) layer.
+
+    Args:
+        user_query (str): The input query from the user.
+        employee_metadata (EmployeeMetadataSchema): Employee details containing company ID, user ID, etc.
+        llm_4o (AzureChatOpenAI): The language model used for query processing.
+        gold_adls_conn (GoldLayerUtilsAsync): Connection utility for accessing structured data storage.
+        chatbot_cache (LRUCache): Cache for user specific data.
+        layer (str): The processing layer determined by classification ('SQL' or 'RAG').
+
+    Returns:
+        str: The final response generated from the selected processing layer.
     """
     print(f"User question: {user_query}")
 
@@ -37,6 +50,6 @@ async def chatbot_entry_execution(
         )
         return sql_agent_response.strip()
 
-    # Instead, it should use the rag layer
+    # Instead, it should use the RAG layer
     answer = await rag_layer_agent(user_query, llm_4o, company_id=employee_metadata.company_id)
     return answer

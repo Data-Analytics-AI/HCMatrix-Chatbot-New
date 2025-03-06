@@ -16,6 +16,28 @@ async def sql_layer_agent(
         company_id: str, employee_id: str, query: str,
         llm_4O: AzureChatOpenAI, gold_adls_conn: GoldLayerUtilsAsync,
         chatbot_cache: LRUCache):
+    """
+        Executes a SQL query for an employee by retrieving or creating an AI-powered SQL agent.
+
+        This function retrieves employee-specific SQL data from Azure Data Lake Storage (ADLS)
+        and caches it for efficient querying. If a cached SQL toolkit exists, it is used;
+        otherwise, the function fetches the SQL database from ADLS, initializes an SQL agent,
+        and executes the query using an AI-powered agent.
+
+        Args:
+            company_id (str): Unique identifier of the company.
+            employee_id (str): Unique identifier of the employee.
+            query (str): The SQL-related user query.
+            llm_4O (AzureChatOpenAI): The AI model used for processing the SQL query.
+            gold_adls_conn (GoldLayerUtilsAsync): Utility for accessing structured data in ADLS.
+            chatbot_cache (LRUCache): Cache for storing and retrieving preloaded SQL toolkits.
+
+        Returns:
+            str: The AI-generated response based on the SQL database query.
+
+        Raises:
+            Exception: If there is an issue retrieving the SQL database or executing the query.
+        """
     start_time = time.time()
     company_data_dir = os.path.join(data_dir, f"cp_{company_id}")
     print(company_data_dir)

@@ -14,6 +14,14 @@ load_dotenv()
 
 # Load and resolve placeholders in the YAML file
 def load_config_with_env(yaml_path):
+    """Loads a YAML configuration file and resolves placeholders with environment variables or Azure Key Vault secrets.
+
+        Args:
+            yaml_path (str or Path): The path to the YAML configuration file.
+
+        Returns: dict: The resolved configuration dictionary with placeholders replaced by corresponding environment
+        variables or secrets from Azure Key Vault.
+    """
     with open(yaml_path, 'r') as file:
         config_file = yaml.safe_load(file)
 
@@ -29,6 +37,7 @@ def load_config_with_env(yaml_path):
 
     # Recursively resolve placeholders
     def resolve_placeholders(obj):
+        """Recursively resolves placeholders in the configuration file."""
         if isinstance(obj, dict):
             return {k: resolve_placeholders(v) for k, v in obj.items()}
         elif isinstance(obj, str) and obj.startswith("$"):
@@ -51,7 +60,14 @@ def load_config_with_env(yaml_path):
 
 
 def timing_decorator(func):
-    """Decorator to measure execution time of a function (sync & async support)."""
+    """Decorator to measure the execution time of a function, supporting both synchronous and asynchronous functions.
+
+    Args:
+        func (Callable): The function to be wrapped.
+
+    Returns:
+        Callable: The wrapped function with execution time measurement.
+    """
     if asyncio.iscoroutinefunction(func):
         @functools.wraps(func)
         async def async_wrapper(*args, **kwargs):

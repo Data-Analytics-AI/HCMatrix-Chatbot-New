@@ -4,8 +4,25 @@ import time
 
 
 class SpeechSynthesizerWrapper:
+    """Wrapper for Azure Speech SDK's SpeechSynthesizer with auto-close handling.
+
+        This class initializes and manages a Speech Synthesizer instance, keeping
+        the connection open for efficiency. It also implements an automatic closure
+        mechanism to release resources after a period of inactivity.
+
+        Attributes:
+            speech_config (speechsdk.SpeechConfig): Configuration for the speech synthesizer.
+            synthesizer (speechsdk.SpeechSynthesizer): The speech synthesizer instance.
+            connection (speechsdk.Connection): Persistent connection for speech synthesis.
+            last_request_time (float): Timestamp of the last synthesis request.
+            auto_close_task (asyncio.Task or None): Background task for handling automatic closure.
+        """
     def __init__(self, speech_config: speechsdk.SpeechConfig):
-        """Initialize the Speech Synthesizer and keep the connection open."""
+        """Initializes the Speech Synthesizer and keeps the connection open.
+
+        Args:
+            speech_config (speechsdk.SpeechConfig): Configuration settings for the speech synthesizer.
+        """
         self.speech_config = speech_config
         self.synthesizer = speechsdk.SpeechSynthesizer(speech_config, None)
         self.connection = speechsdk.Connection.from_speech_synthesizer(self.synthesizer)
@@ -18,7 +35,11 @@ class SpeechSynthesizerWrapper:
         self.auto_close_task = None  # Async task for closing
 
     def start_auto_close_timer(self):
-        """Start an async task to check inactivity every 30 seconds and close if idle for 2 minutes."""
+        """Starts a background task to close the connection after 2 minutes of inactivity.
+
+        The task checks every 30 seconds and closes the connection if no requests
+        have been made in the last 2 minutes.
+        """
         if self.auto_close_task:
             self.auto_close_task.cancel()  # Cancel any previous task
 
@@ -45,7 +66,14 @@ class SpeechSynthesizerWrapper:
         )
 
     async def synthesize(self, text):
-        """Synthesize speech from text while keeping the connection alive."""
+        """Synthesizes speech from text while keeping the connection alive.
+
+        Args:
+            text (str): The input text to convert into speech.
+
+        Returns:
+            Optional[bytes]: The synthesized speech audio data if successful, otherwise None.
+        """
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 🎙️ Synthesizing text: {text}")
         self.last_request_time = time.time()  # Update request time
 
