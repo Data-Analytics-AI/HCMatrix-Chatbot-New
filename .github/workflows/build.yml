@@ -147,7 +147,8 @@ jobs:
           az container delete --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container --yes || true
           
           # Wait a moment for the deletion to complete
-          sleep 10
+          echo "Waiting for deletion to complete..."
+          sleep 30
           
           # Then create a new container instance
           echo "Creating new container instance..."
@@ -164,6 +165,11 @@ jobs:
             --memory 8 \
             --restart-policy Always \
             --environment-variables DEPLOY_ENV=development
+          
+          # Check container logs to help diagnose any issues
+          echo "Checking container logs (waiting 30s for startup)..."
+          sleep 30
+          az container logs --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container || true
 
       - name: Print Logs for Debugging
         run: |
