@@ -126,8 +126,39 @@ jobs:
       - name: Scale AKS Cluster (Production Only)
         if: env.DEPLOYMENT_TYPE == 'AKS'
         run: |
-          az aks update --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --min-count 4 --max-count 8 --enable-cluster-autoscaler
-          kubectl rollout status deployment/hcmatrix-k8s-deployment -n hcmatrix-prod
+          # Check if autoscaler is already enabled
+          AUTOSCALER_STATUS=$(az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --query 'agentPoolProfiles[0].enableAutoScaling' -o tsv)
+          
+          if [ "$AUTOSCALER_STATUS" == "true" ]; then
+            # Update existing autoscaler with optimized settings (faster operation)
+            echo "Updating existing autoscaler settings..."
+            az aks update-cluster-autoscaler --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --min-count 1 --max-count 8
+          else
+            # Enable autoscaler if not already enabled
+            echo "Enabling cluster autoscaler..."
+            az aks update --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --min-count 1 --max-count 8 --enable-cluster-autoscaler
+          fi
+          
+          # Monitor deployment rollout
+          kubectl rollout status deployment/hcmatrix-k8s-deployment -n hcmatrix-prod --timeout=300s
+
+      - name: Set up cost management (Production Only)
+        if: env.DEPLOYMENT_TYPE == 'AKS'
+        run: |
+          # Create a budget alert to avoid subscription issues
+          BUDGET_NAME="HCMatrixBudget"
+          AMOUNT=500  # Set your monthly budget limit in dollars
+          
+          # Create budget with email notification at 80% of threshold
+          az consumption budget create \
+            --budget-name $BUDGET_NAME \
+            --amount $AMOUNT \
+            --category cost \
+            --resource-group $RESOURCE_GROUP \
+            --time-grain monthly \
+            --start-date $(date +%Y-%m-01) \
+            --notification "actual_gt_80_percent" NotificationEnabled=true NotificationThreshold=80 \
+            || echo "Budget alert setup requires additional permissions - please set up manually in Azure portal"
 
       - name: Deploy to ACI (Staging Only)
         if: env.DEPLOYMENT_TYPE == 'ACI'
@@ -148,9 +179,9 @@ jobs:
           
           # Wait a moment for the deletion to complete
           echo "Waiting for deletion to complete..."
-          sleep 30
+          sleep 10
           
-          # Then create a new container instance
+          # Then create a new container instance with optimized resources
           echo "Creating new container instance..."
           az container create --resource-group $RESOURCE_GROUP \
             --name hcmatrix-staging-container \
@@ -161,22 +192,24 @@ jobs:
             --registry-password ${{ secrets.ACR_PASSWORD }} \
             --dns-name-label $DNS_NAME \
             --ports 5000 \
-            --cpu 4 \
-            --memory 8 \
+            --cpu 2 \
+            --memory 4 \
             --restart-policy Always \
             --environment-variables DEPLOY_ENV=development
           
           # Check container logs to help diagnose any issues
-          echo "Checking container logs (waiting 30s for startup)..."
-          sleep 30
+          echo "Checking container logs (waiting 15s for startup)..."
+          sleep 15
           az container logs --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container || true
 
       - name: Print Logs for Debugging
         run: |
-          sleep 20  # Wait for pods to start
+          sleep 10  # Reduced wait time for pods to start
           echo "📌 Checking Deployment Logs:"
           if [[ "$DEPLOYMENT_TYPE" == "AKS" ]]; then
             kubectl get pods -n hcmatrix-prod
+            echo "📊 Current node count:"
+            kubectl get nodes | wc -l
           else
             az container show --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container --query 'instanceView.state'
           fi
