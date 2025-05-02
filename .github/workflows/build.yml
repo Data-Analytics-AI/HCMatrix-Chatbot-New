@@ -230,13 +230,65 @@ jobs:
             --from-literal=CLIENT_SECRET=${{ secrets.CLIENT_SECRET }} \
             --from-literal=KEY_VAULT_NAME=${{ secrets.KEY_VAULT_NAME }}
           
-          # Apply manifests
+          # Check pod crashes before deployment
+          echo "Checking for any existing pods in crash state:"
+          kubectl get pods -n hcmatrix-prod -o wide || true
+          
+          # Modify deployment to include debug environment variables and command
+          echo "Modifying deployment to add debug features..."
+          cat deployment.yml
+          
+          # Add a debug probe command to check environment inside container
+          cat <<EOF > debug-probe.yaml
+          apiVersion: v1
+          kind: Pod
+          metadata:
+            name: debug-probe
+            namespace: hcmatrix-prod
+          spec:
+            containers:
+            - name: debug-container
+              image: hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}
+              command: ["/bin/sh", "-c", "env && sleep 300"]
+            restartPolicy: Never
+          EOF
+          
+          # Apply debug probe
+          kubectl apply -f debug-probe.yaml
+          
+          # Wait for probe to start
+          echo "Waiting for debug probe to start..."
+          kubectl wait --for=condition=Ready pod/debug-probe -n hcmatrix-prod --timeout=60s || true
+          
+          # Get debug probe logs
+          echo "Debug probe environment:"
+          kubectl logs debug-probe -n hcmatrix-prod || true
+          
+          # Apply main deployment
+          echo "Applying main deployment..."
           kubectl apply -f deployment.yml -n hcmatrix-prod
           kubectl apply -f service.yml -n hcmatrix-prod
           
+          # Monitor pods without waiting for rollout completion
+          echo "Monitoring pod creation..."
+          kubectl get pods -n hcmatrix-prod -w &
+          WATCH_PID=$!
+          sleep 10
+          kill $WATCH_PID || true
+          
+          # Check first pod that gets created
+          echo "Checking first pod logs..."
+          FIRST_POD=$(kubectl get pods -n hcmatrix-prod -l app=hcmatrix-app | grep -v NAME | head -1 | awk '{print $1}')
+          if [ -n "$FIRST_POD" ]; then
+            echo "First pod name: $FIRST_POD"
+            kubectl describe pod $FIRST_POD -n hcmatrix-prod
+            kubectl logs $FIRST_POD -n hcmatrix-prod || true
+          fi
+          
           # Wait for deployment with increased timeout (10 minutes instead of 300s)
+          echo "Waiting for deployment to complete..."
           kubectl rollout status deployment/hcmatrix-k8s-deployment -n hcmatrix-prod --timeout=600s || {
-            echo "❌ Deployment failed or timed out. Let's investigate:"
+            echo "❌ Deployment failed or timed out. Let's investigate deeper:"
             
             echo "🔍 Pod status:"
             kubectl get pods -n hcmatrix-prod -l app=hcmatrix-app -o wide
@@ -251,6 +303,15 @@ jobs:
               echo "📝 Logs from problematic pod (if available):"
               kubectl logs $PROBLEM_POD -n hcmatrix-prod --previous || true
               kubectl logs $PROBLEM_POD -n hcmatrix-prod || true
+              
+              echo "🔍 Checking pod events:"
+              kubectl get events -n hcmatrix-prod --sort-by='.metadata.creationTimestamp' | grep $PROBLEM_POD || true
+              
+              echo "🐳 Checking container startup commands:"
+              kubectl get pod $PROBLEM_POD -n hcmatrix-prod -o jsonpath='{.spec.containers[0].command}' || true
+              
+              echo "🌿 Checking environment variables:"
+              kubectl get pod $PROBLEM_POD -n hcmatrix-prod -o jsonpath='{.spec.containers[0].env}' || true
             else
               echo "⚠️ Could not identify a specific problematic pod"
             fi
@@ -259,14 +320,28 @@ jobs:
             kubectl get pods -n hcmatrix-prod -o jsonpath="{.items[*].status.containerStatuses[*].state.waiting.reason}"
             
             echo "❓ Is this an image access issue? Checking if ACR is accessible from AKS:"
-            kubectl run test-acr-access --image=hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} -n default --restart=Never --command -- sleep 10 || true
+            kubectl run test-acr-access --image=hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} -n default --restart=Never --command -- sleep 30 || true
             sleep 5
             kubectl describe pod test-acr-access -n default || true
+            
+            echo "🧪 Testing container with minimal configuration:"
+            kubectl run test-container-startup --image=hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} -n default --restart=Never --env="DEBUG=true" --env="DEPLOY_ENV=production" --command -- sleep 60 || true
+            sleep 5
+            kubectl describe pod test-container-startup -n default || true
+            
+            echo "🔐 Checking if secrets are properly mounted:"
+            kubectl get secrets -n hcmatrix-prod
+            
+            echo "⚡ Checking if deployment has proper resource limits:"
+            kubectl get deployment hcmatrix-k8s-deployment -n hcmatrix-prod -o jsonpath='{.spec.template.spec.containers[0].resources}' || true
+            
+            # Cleanup test pods
             kubectl delete pod test-acr-access -n default --ignore-not-found=true
+            kubectl delete pod test-container-startup -n default --ignore-not-found=true
+            kubectl delete pod debug-probe -n hcmatrix-prod --ignore-not-found=true
             
             exit 1
           }
-
       - name: Scale AKS Cluster (Production Only)
         if: env.DEPLOYMENT_TYPE == 'AKS'
         run: |
