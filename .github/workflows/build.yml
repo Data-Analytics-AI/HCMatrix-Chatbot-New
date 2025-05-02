@@ -133,6 +133,7 @@ jobs:
           az container create --resource-group $RESOURCE_GROUP \
             --name hcmatrix-staging-container \
             --image hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} \
+            --os-type Linux \
             --registry-login-server hcmatrix.azurecr.io \
             --registry-username ${{ secrets.ACR_USERNAME }} \
             --registry-password ${{ secrets.ACR_PASSWORD }} \
