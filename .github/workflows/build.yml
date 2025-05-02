@@ -156,7 +156,11 @@ jobs:
             --registry-username ${{ secrets.ACR_USERNAME }} \
             --registry-password ${{ secrets.ACR_PASSWORD }} \
             --dns-name-label $DNS_NAME \
-            --ports 5000
+            --ports 5000 \
+            --cpu 1 \
+            --memory 1.5 \
+            --restart-policy OnFailure \
+            --environment-variables DEPLOY_ENV=development
 
       - name: Print Logs for Debugging
         run: |
