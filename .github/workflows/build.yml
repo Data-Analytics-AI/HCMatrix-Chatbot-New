@@ -123,10 +123,23 @@ jobs:
             echo "DEPLOYMENT_TYPE=ACI" >> $GITHUB_ENV
           fi
 
+      - name: Get AKS credentials (for AKS deployment)
+        if: env.DEPLOYMENT_TYPE == 'AKS'
+        run: |
+          # Get cluster credentials
+          az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
+          
+          # Verify proper cluster connection
+          kubectl cluster-info
+
       - name: Ensure RBAC Access for Default Service Account (AKS)
         if: env.DEPLOYMENT_TYPE == 'AKS'
         run: |
           echo "Creating RoleBinding to allow default SA to access hcmatrix-prod..."
+          
+          # Create namespace if it doesn't exist
+          kubectl create namespace hcmatrix-prod --dry-run=client -o yaml | kubectl apply -f -
+          
           cat <<EOF | kubectl apply -f -
           apiVersion: rbac.authorization.k8s.io/v1
           kind: RoleBinding
@@ -142,9 +155,6 @@ jobs:
             name: view
             apiGroup: rbac.authorization.k8s.io
           EOF
-
-      # ... rest of the AKS and ACI deploy logic remains unchanged
-
 
       - name: Verify Deployment YAML
         if: env.DEPLOYMENT_TYPE == 'AKS'
@@ -207,15 +217,6 @@ jobs:
       - name: Deploy to AKS with Enhanced Debugging (Production Only)
         if: env.DEPLOYMENT_TYPE == 'AKS'
         run: |
-          # Get cluster credentials
-          az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
-          
-          # Verify proper cluster connection
-          kubectl cluster-info
-          
-          # Create namespace if it doesn't exist
-          kubectl create namespace hcmatrix-prod --dry-run=client -o yaml | kubectl apply -f -
-          
           # Update deployment.yml with the current image tag
           sed -i "s|hcmatrix.azurecr.io/hcmatrix_staging_app:.*|hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}|g" deployment.yml
           
