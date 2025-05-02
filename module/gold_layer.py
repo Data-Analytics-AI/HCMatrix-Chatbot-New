@@ -57,3 +57,4 @@ class GoldLayerUtilsAsync(ADLSConnectionAsync):
             
             async with aiofiles.open('temp_db.db', 'wb') as temp_db_file:
                 await temp_db_file.write(io_file_object.getbuffer())
+                

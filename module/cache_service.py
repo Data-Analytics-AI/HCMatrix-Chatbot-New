@@ -92,3 +92,4 @@ class LRUCache:
             str: A string representation of the cache contents.
         """
         return f"{[(key, value[0]) for key, value in self.cache.items()]}"
+        
