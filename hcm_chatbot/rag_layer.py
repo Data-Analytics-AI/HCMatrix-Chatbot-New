@@ -104,4 +104,3 @@ async def rag_layer_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id: 
     rag_chain = get_rag_chain(company_id, llm_4o)  # Get cached chain
     result = await rag_chain.ainvoke({"input": user_query})
     return result['answer']
-

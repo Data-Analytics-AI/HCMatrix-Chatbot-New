@@ -44,7 +44,6 @@ async def sql_layer_agent(
 
     company_sql_dir = os.path.join(company_data_dir, f"cp_{company_id}_sql")
     employee_sql_db = os.path.join(company_sql_dir, f"emp_{employee_id}_sql_db.db")
-
     # Minimalistic cache implementation
     cache_key = f"{company_id}_{employee_id}"
     cache_data = chatbot_cache.get(cache_key)
