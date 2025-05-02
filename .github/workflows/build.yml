@@ -123,6 +123,29 @@ jobs:
             echo "DEPLOYMENT_TYPE=ACI" >> $GITHUB_ENV
           fi
 
+      - name: Ensure RBAC Access for Default Service Account (AKS)
+        if: env.DEPLOYMENT_TYPE == 'AKS'
+        run: |
+          echo "Creating RoleBinding to allow default SA to access hcmatrix-prod..."
+          cat <<EOF | kubectl apply -f -
+          apiVersion: rbac.authorization.k8s.io/v1
+          kind: RoleBinding
+          metadata:
+            name: allow-debug
+            namespace: hcmatrix-prod
+          subjects:
+          - kind: ServiceAccount
+            name: default
+            namespace: default
+          roleRef:
+            kind: ClusterRole
+            name: view
+            apiGroup: rbac.authorization.k8s.io
+          EOF
+
+      # ... rest of the AKS and ACI deploy logic remains unchanged
+
+
       - name: Verify Deployment YAML
         if: env.DEPLOYMENT_TYPE == 'AKS'
         run: |
