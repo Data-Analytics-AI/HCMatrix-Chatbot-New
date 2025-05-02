@@ -148,6 +148,15 @@ jobs:
           
           echo "Using DNS name: $DNS_NAME"
           
+          # First, delete the existing container instance if it exists
+          echo "Removing existing container instance if present..."
+          az container delete --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container --yes || true
+          
+          # Wait a moment for the deletion to complete
+          sleep 10
+          
+          # Then create a new container instance
+          echo "Creating new container instance..."
           az container create --resource-group $RESOURCE_GROUP \
             --name hcmatrix-staging-container \
             --image hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG || 'latest' }} \
@@ -157,9 +166,9 @@ jobs:
             --registry-password ${{ secrets.ACR_PASSWORD }} \
             --dns-name-label $DNS_NAME \
             --ports 5000 \
-            --cpu 1 \
-            --memory 1.5 \
-            --restart-policy OnFailure \
+            --cpu 4 \
+            --memory 8 \
+            --restart-policy Always \
             --environment-variables DEPLOY_ENV=development
 
       - name: Print Logs for Debugging
