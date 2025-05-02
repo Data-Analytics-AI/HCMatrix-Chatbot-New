@@ -11,12 +11,6 @@ on:
         options:
           - development
           - production
-  pull_request:
-    branches:
-      - master
-      - feature/**
-    types:
-      - closed
 
 env:
   DEPLOY_ENV: ${{ github.ref == 'refs/heads/master' && 'production' || 'development' }}
