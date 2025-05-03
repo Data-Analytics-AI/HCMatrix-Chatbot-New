@@ -1,3 +1,4 @@
+
 name: Integration Tests and Deployment
 
 on:
@@ -11,6 +12,12 @@ on:
         options:
           - development
           - production
+  pull_request:
+    branches:
+      - master
+      - feature/**
+    types:
+      - closed
 
 env:
   DEPLOY_ENV: ${{ github.ref == 'refs/heads/master' && 'production' || 'development' }}
@@ -38,29 +45,21 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt
-
       - name: Run Unit Tests
         run: |
           echo "Running API tests in ${{ inputs.environment }} environment..."
           flake8 **/*.py --count --show-source --statistics || (echo "Flake8 failed! Fix issues before merging." && exit 1)
-
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     needs: integration_tests
-    outputs:
-      image_tag: ${{ steps.set_tag.outputs.image_tag }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set image tag and output
-        id: set_tag
-        run: |
-          IMAGE_TAG=$(date +%Y%m%d%H%M%S)
-          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
-          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
+      - name: Set environment variables
+        run: echo "IMAGE_TAG=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
 
       - name: Log in to Azure
         uses: azure/login@v1
@@ -77,31 +76,15 @@ jobs:
         run: |
           docker build -t hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} .
           docker tag hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} hcmatrix.azurecr.io/hcmatrix_staging_app:latest
-
       - name: Push Docker images
         run: |
           docker push hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}
           docker push hcmatrix.azurecr.io/hcmatrix_staging_app:latest
-
-      - name: Verify Docker Image
-        run: |
-          echo "Verifying image was successfully pushed with tag: ${{ env.IMAGE_TAG }}"
-          az acr repository show-tags --name hcmatrix --repository hcmatrix_staging_app --output table
-          echo "Checking if our specific tag exists:"
-          if az acr repository show-tags --name hcmatrix --repository hcmatrix_staging_app --output json | grep -q "${{ env.IMAGE_TAG }}"; then
-            echo "✅ Image tag ${{ env.IMAGE_TAG }} confirmed in registry"
-          else
-            echo "❌ ERROR: Tag ${{ env.IMAGE_TAG }} not found! Deployment will likely fail"
-            exit 1
-          fi
-
   deploy:
     name: Deploy to Azure
     runs-on: ubuntu-latest
     needs: build-and-push
     environment: ${{ inputs.environment }}
-    env:
-      IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
 
     steps:
       - name: Checkout repository
@@ -122,284 +105,39 @@ jobs:
             echo "RESOURCE_GROUP=HCM-Staging" >> $GITHUB_ENV
             echo "DEPLOYMENT_TYPE=ACI" >> $GITHUB_ENV
           fi
-
-      - name: Get AKS credentials (for AKS deployment)
+      - name: Deploy to AKS (Production Only)
         if: env.DEPLOYMENT_TYPE == 'AKS'
         run: |
-          # Get cluster credentials
           az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
-          
-          # Verify proper cluster connection
-          kubectl cluster-info
-
-      - name: Ensure RBAC Access for Default Service Account (AKS)
-        if: env.DEPLOYMENT_TYPE == 'AKS'
-        run: |
-          echo "Creating RoleBinding to allow default SA to access hcmatrix-prod..."
-          
-          # Create namespace if it doesn't exist
           kubectl create namespace hcmatrix-prod --dry-run=client -o yaml | kubectl apply -f -
-          
-          cat <<EOF | kubectl apply -f -
-          apiVersion: rbac.authorization.k8s.io/v1
-          kind: RoleBinding
-          metadata:
-            name: allow-debug
-            namespace: hcmatrix-prod
-          subjects:
-          - kind: ServiceAccount
-            name: default
-            namespace: default
-          roleRef:
-            kind: ClusterRole
-            name: view
-            apiGroup: rbac.authorization.k8s.io
-          EOF
-
-      - name: Verify Deployment YAML
-        if: env.DEPLOYMENT_TYPE == 'AKS'
-        run: |
-          echo "Checking deployment.yml content:"
-          if [ ! -f "deployment.yml" ]; then
-            echo "❌ ERROR: deployment.yml file not found!"
-            ls -la
-            exit 1
-          fi
-          
-          echo "📄 Deployment file contents:"
-          cat deployment.yml
-          
-          echo "Checking for common issues in deployment.yml..."
-          
-          # Check if image tag is parameterized correctly
-          if ! grep -q "image:.*hcmatrix.azurecr.io/hcmatrix_staging_app" deployment.yml; then
-            echo "⚠️ WARNING: Deployment YAML might not reference the correct image repository"
-          fi
-          
-          # Check if the app name matches what we expect
-          if ! grep -q "app: hcmatrix-app" deployment.yml; then
-            echo "⚠️ WARNING: App selector label might not match 'hcmatrix-app'"
-          fi
-          
-          # Check if deployment name matches what we expect
-          if ! grep -q "name: hcmatrix-k8s-deployment" deployment.yml; then
-            echo "⚠️ WARNING: Deployment name might not match 'hcmatrix-k8s-deployment'"
-          fi
-
-      - name: Check AKS-ACR Integration
-        if: env.DEPLOYMENT_TYPE == 'AKS'
-        run: |
-          echo "Checking if AKS has proper access to ACR..."
-          
-          # Get the ACR ID
-          ACR_ID=$(az acr show --name hcmatrix --query id --output tsv)
-          
-          # Check if the AKS has the AcrPull role
-          AKS_PRINCIPAL_ID=$(az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --query identityProfile.kubeletidentity.objectId --output tsv)
-          
-          if [ -z "$AKS_PRINCIPAL_ID" ]; then
-            echo "⚠️ Couldn't retrieve AKS managed identity. Setting up ACR integration..."
-            az aks update --name $CLUSTER_NAME --resource-group $RESOURCE_GROUP --attach-acr hcmatrix
-          else
-            echo "Checking if AKS ($AKS_PRINCIPAL_ID) has pull access to ACR..."
-            
-            # Check if the role assignment exists
-            ROLE_EXISTS=$(az role assignment list --assignee $AKS_PRINCIPAL_ID --scope $ACR_ID --query "[?roleDefinitionName=='AcrPull']" --output tsv)
-            
-            if [ -z "$ROLE_EXISTS" ]; then
-              echo "⚠️ AKS doesn't have AcrPull role. Setting up ACR integration..."
-              az aks update --name $CLUSTER_NAME --resource-group $RESOURCE_GROUP --attach-acr hcmatrix
-            else
-              echo "✅ AKS has proper access to ACR"
-            fi
-          fi
-
-      - name: Deploy to AKS with Enhanced Debugging (Production Only)
-        if: env.DEPLOYMENT_TYPE == 'AKS'
-        run: |
-          # Update deployment.yml with the current image tag
-          sed -i "s|hcmatrix.azurecr.io/hcmatrix_staging_app:.*|hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}|g" deployment.yml
-          
-          # Show what image we're deploying
-          echo "Deploying image: hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}"
-          grep -A 2 "image:" deployment.yml
-          
-          # Create or update secrets
           kubectl delete secret hcm-secrets -n hcmatrix-prod --ignore-not-found=true
           kubectl create secret generic hcm-secrets -n hcmatrix-prod \
             --from-literal=CLIENT_SECRET=${{ secrets.CLIENT_SECRET }} \
             --from-literal=KEY_VAULT_NAME=${{ secrets.KEY_VAULT_NAME }}
-          
-          # Check pod crashes before deployment
-          echo "Checking for any existing pods in crash state:"
-          kubectl get pods -n hcmatrix-prod -o wide || true
-          
-          # Modify deployment to include debug environment variables and command
-          echo "Modifying deployment to add debug features..."
-          cat deployment.yml
-          
-          # Add a debug probe command to check environment inside container
-          cat <<EOF > debug-probe.yaml
-          apiVersion: v1
-          kind: Pod
-          metadata:
-            name: debug-probe
-            namespace: hcmatrix-prod
-          spec:
-            containers:
-            - name: debug-container
-              image: hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}
-              command: ["/bin/sh", "-c", "env && sleep 300"]
-            restartPolicy: Never
-          EOF
-          
-          # Apply debug probe
-          kubectl apply -f debug-probe.yaml
-          
-          # Wait for probe to start
-          echo "Waiting for debug probe to start..."
-          kubectl wait --for=condition=Ready pod/debug-probe -n hcmatrix-prod --timeout=60s || true
-          
-          # Get debug probe logs
-          echo "Debug probe environment:"
-          kubectl logs debug-probe -n hcmatrix-prod || true
-          
-          # Apply main deployment
-          echo "Applying main deployment..."
           kubectl apply -f deployment.yml -n hcmatrix-prod
           kubectl apply -f service.yml -n hcmatrix-prod
-          
-          # Monitor pods without waiting for rollout completion
-          echo "Monitoring pod creation..."
-          kubectl get pods -n hcmatrix-prod -w &
-          WATCH_PID=$!
-          sleep 10
-          kill $WATCH_PID || true
-          
-          # Check first pod that gets created
-          echo "Checking first pod logs..."
-          FIRST_POD=$(kubectl get pods -n hcmatrix-prod -l app=hcmatrix-app | grep -v NAME | head -1 | awk '{print $1}')
-          if [ -n "$FIRST_POD" ]; then
-            echo "First pod name: $FIRST_POD"
-            kubectl describe pod $FIRST_POD -n hcmatrix-prod
-            kubectl logs $FIRST_POD -n hcmatrix-prod || true
-          fi
-          
-          # Wait for deployment with increased timeout (10 minutes instead of 300s)
-          echo "Waiting for deployment to complete..."
-          kubectl rollout status deployment/hcmatrix-k8s-deployment -n hcmatrix-prod --timeout=600s || {
-            echo "❌ Deployment failed or timed out. Let's investigate deeper:"
-            
-            echo "🔍 Pod status:"
-            kubectl get pods -n hcmatrix-prod -l app=hcmatrix-app -o wide
-            
-            echo "🔎 Finding problematic pods:"
-            PROBLEM_POD=$(kubectl get pods -n hcmatrix-prod -l app=hcmatrix-app | grep -v "Running" | head -1 | awk '{print $1}')
-            
-            if [ -n "$PROBLEM_POD" ]; then
-              echo "📋 Describing problematic pod $PROBLEM_POD:"
-              kubectl describe pod $PROBLEM_POD -n hcmatrix-prod
-              
-              echo "📝 Logs from problematic pod (if available):"
-              kubectl logs $PROBLEM_POD -n hcmatrix-prod --previous || true
-              kubectl logs $PROBLEM_POD -n hcmatrix-prod || true
-              
-              echo "🔍 Checking pod events:"
-              kubectl get events -n hcmatrix-prod --sort-by='.metadata.creationTimestamp' | grep $PROBLEM_POD || true
-              
-              echo "🐳 Checking container startup commands:"
-              kubectl get pod $PROBLEM_POD -n hcmatrix-prod -o jsonpath='{.spec.containers[0].command}' || true
-              
-              echo "🌿 Checking environment variables:"
-              kubectl get pod $PROBLEM_POD -n hcmatrix-prod -o jsonpath='{.spec.containers[0].env}' || true
-            else
-              echo "⚠️ Could not identify a specific problematic pod"
-            fi
-            
-            echo "🔄 Checking image pull status:"
-            kubectl get pods -n hcmatrix-prod -o jsonpath="{.items[*].status.containerStatuses[*].state.waiting.reason}"
-            
-            echo "❓ Is this an image access issue? Checking if ACR is accessible from AKS:"
-            kubectl run test-acr-access --image=hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} -n default --restart=Never --command -- sleep 30 || true
-            sleep 5
-            kubectl describe pod test-acr-access -n default || true
-            
-            echo "🧪 Testing container with minimal configuration:"
-            kubectl run test-container-startup --image=hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} -n default --restart=Never --env="DEBUG=true" --env="DEPLOY_ENV=production" --command -- sleep 60 || true
-            sleep 5
-            kubectl describe pod test-container-startup -n default || true
-            
-            echo "🔐 Checking if secrets are properly mounted:"
-            kubectl get secrets -n hcmatrix-prod
-            
-            echo "⚡ Checking if deployment has proper resource limits:"
-            kubectl get deployment hcmatrix-k8s-deployment -n hcmatrix-prod -o jsonpath='{.spec.template.spec.containers[0].resources}' || true
-            
-            # Cleanup test pods
-            kubectl delete pod test-acr-access -n default --ignore-not-found=true
-            kubectl delete pod test-container-startup -n default --ignore-not-found=true
-            kubectl delete pod debug-probe -n hcmatrix-prod --ignore-not-found=true
-            
-            exit 1
-          }
       - name: Scale AKS Cluster (Production Only)
         if: env.DEPLOYMENT_TYPE == 'AKS'
         run: |
-          AUTOSCALER_STATUS=$(az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --query 'agentPoolProfiles[0].enableAutoScaling' -o tsv)
-          if [ "$AUTOSCALER_STATUS" == "true" ]; then
-            echo "Updating existing autoscaler settings..."
-            az aks update --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --update-cluster-autoscaler --min-count 1 --max-count 8
-          else
-            echo "Enabling cluster autoscaler..."
-            az aks update --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --enable-cluster-autoscaler --min-count 1 --max-count 8
-          fi
-
-      - name: Set up cost monitoring (Production Only)
-        if: env.DEPLOYMENT_TYPE == 'AKS'
-        run: |
-          echo "IMPORTANT: Set up cost alerts in Azure Portal to prevent subscription expiration"
-          echo "1. Go to Azure Cost Management"
-          echo "2. Create a budget with alerts at 70% and 90% of your limit"
-          echo "3. Configure email notifications to your team"
-          echo "Current resource usage:"
-          az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --query 'agentPoolProfiles[0].count' -o tsv
-
+          az aks update --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --min-count 4 --max-count 8 --enable-cluster-autoscaler
+          kubectl rollout status deployment/hcmatrix-k8s-deployment -n hcmatrix-prod
       - name: Deploy to ACI (Staging Only)
         if: env.DEPLOYMENT_TYPE == 'ACI'
         run: |
-          DNS_NAME="hcmatrix-staging-app-${IMAGE_TAG}"
-          if [ -z "$IMAGE_TAG" ]; then
-            DNS_NAME="hcmatrix-staging-app-$(date +%Y%m%d%H%M%S)"
-          fi
-          echo "Using DNS name: $DNS_NAME"
-          echo "Removing existing container instance if present..."
-          az container delete --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container --yes || true
-          sleep 10
-          echo "Creating new container instance..."
           az container create --resource-group $RESOURCE_GROUP \
             --name hcmatrix-staging-container \
-            --image hcmatrix.azurecr.io/hcmatrix_staging_app:${IMAGE_TAG:-latest} \
-            --os-type Linux \
+            --image hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} \
             --registry-login-server hcmatrix.azurecr.io \
             --registry-username ${{ secrets.ACR_USERNAME }} \
             --registry-password ${{ secrets.ACR_PASSWORD }} \
-            --dns-name-label $DNS_NAME \
-            --ports 5000 \
-            --cpu 2 \
-            --memory 4 \
-            --restart-policy Always \
-            --environment-variables DEPLOY_ENV=development
-          sleep 15
-          az container logs --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container || true
-
+            --dns-name-label hcmatrix-staging-${{ env.IMAGE_TAG }} \
+            --ports 5000
       - name: Print Logs for Debugging
         run: |
-          sleep 10
+          sleep 20  # Wait for pods to start
           echo "📌 Checking Deployment Logs:"
           if [[ "$DEPLOYMENT_TYPE" == "AKS" ]]; then
             kubectl get pods -n hcmatrix-prod
-            echo "📊 Current node count:"
-            kubectl get nodes | wc -l
           else
             az container show --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container --query 'instanceView.state'
           fi
