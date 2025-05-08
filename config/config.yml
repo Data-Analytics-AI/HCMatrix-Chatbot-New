@@ -15,7 +15,7 @@ production:
 
   adls_credentials:
     account_name: "transformedhcmatrixadls1"
-    client_id: "76bd4cdb-7d2c-495a-99ad-ceafd1466644"
+    client_id: "c63b5eb8-27dc-41dc-ad80-0c0768d7d946"
     client_secret: $CLIENT_SECRET
     tenant_id: "ba130eca-3030-48e1-9089-c979293aeb70"
     goldlayer_container_name: "goldcontainerhcmatrix"
@@ -40,17 +40,17 @@ production:
     embedding_dim: 3072
 
   azure_oai_credentials:
-    AZURE_OPENAI_API_KEY: $AZURE-OPENAI-API-KEY
+    AZURE_OPENAI_API_KEY: $AZURE-OPENAI-API-KEY           
     AZURE_OPENAI_ENDPOINT: "https://hcmatrix-openai.openai.azure.com/"
-    4O_API_VERSION: "2024-02-01"
+    4O_API_VERSION: "2024-12-01-preview"
     4O_AZURE_DEPLOYMENT: "hcmatrix-llm-4o"
     4O_MODEL_NAME: "gpt-4o"
-    4O_MODEL_VERSION: "2024-05-13"
+    4O_MODEL_VERSION: "2024-08-06"
     MODEL_NAME: "gpt3.5-turbo-instruct"
-    API_VERSION: "2023-12-01-preview"
+    API_VERSION: "2024-12-01-preview"
     AZURE_DEPLOYMENT: "hcmatrix-llm"
     AZURE_EMBEDDING_DEPLOYMENT: "hcmatrix-embeddings"
-    AZURE_EMBEDDING_API_VERSION: "2023-05-15"
+    AZURE_EMBEDDING_API_VERSION: "2024-02-01"
     AZURE_EMBEDDING_API_BASE: "https://hcmatrix-openai.openai.azure.com/openai/deployments/hcmatrix-embeddings/embeddings?api-version=2023-05-15"
     AZURE_EMBEDDING_API_KEY: $AZURE-EMBEDDING-API-KEY
 
