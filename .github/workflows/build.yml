@@ -1,4 +1,3 @@
-
 name: Integration Tests and Deployment
 
 on:
@@ -7,20 +6,16 @@ on:
       environment:
         description: 'Select Environment'
         required: true
-        default: 'development'
+        default: 'development' # Corresponds to Staging
         type: choice
         options:
-          - development
+          - development # Staging
           - production
-  pull_request:
-    branches:
-      - master
-      - feature/**
-    types:
-      - closed
 
 env:
-  DEPLOY_ENV: ${{ github.ref == 'refs/heads/master' && 'production' || 'development' }}
+  # DEPLOY_ENV is set based on the workflow input, not the branch for manual dispatch.
+  # If you also trigger on push to master for production, you might want to adjust this logic.
+  DEPLOY_ENV: ${{ inputs.environment }} # Simplified for clarity with workflow_dispatch
 
 jobs:
   integration_tests:
@@ -29,7 +24,7 @@ jobs:
     environment: ${{ inputs.environment }}
     env:
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
-      KEY_VAULT_NAME: ${{ secrets.KEY_VAULT_NAME }}
+      KEY_VAULT_NAME: ${{ secrets.KEY_VAULT_NAME }} # Ensure this secret points to the correct Key Vault for the environment
 
     steps:
       - name: Checkout repository
@@ -45,46 +40,60 @@ jobs:
         run: |
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt
+
       - name: Run Unit Tests
         run: |
           echo "Running API tests in ${{ inputs.environment }} environment..."
           flake8 **/*.py --count --show-source --statistics || (echo "Flake8 failed! Fix issues before merging." && exit 1)
+
   build-and-push:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
     needs: integration_tests
+    outputs:
+      image_tag: ${{ steps.set_tag.outputs.image_tag }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set environment variables
-        run: echo "IMAGE_TAG=$(date +%Y%m%d%H%M%S)" >> $GITHUB_ENV
+      - name: Set image tag and output
+        id: set_tag
+        run: |
+          IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+          echo "image_tag=${IMAGE_TAG}" >> $GITHUB_OUTPUT
 
       - name: Log in to Azure
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }} # Ensure this service principal has rights to the new subscription/resources
 
       - name: Verify Azure Login
         run: az account show
 
       - name: Log in to Azure Container Registry
-        run: az acr login --name hcmatrix --username ${{ secrets.ACR_USERNAME }} --password ${{ secrets.ACR_PASSWORD }}
+        run: az acr login --name hcmatrixmoved --username ${{ secrets.ACR_USERNAME }} --password ${{ secrets.ACR_PASSWORD }} # Updated ACR name
 
       - name: Build and tag Docker image
         run: |
-          docker build -t hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} .
-          docker tag hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} hcmatrix.azurecr.io/hcmatrix_staging_app:latest
+          # Using inputs.environment to differentiate image names if needed, or use a single image name
+          # For simplicity, using a common image name here. Adjust if you need separate staging/prod image names in ACR.
+          docker build -t hcmatrixmoved.azurecr.io/hcmatrix_app:${{ env.IMAGE_TAG }} .
+          docker tag hcmatrixmoved.azurecr.io/hcmatrix_app:${{ env.IMAGE_TAG }} hcmatrixmoved.azurecr.io/hcmatrix_app:latest
+
       - name: Push Docker images
         run: |
-          docker push hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }}
-          docker push hcmatrix.azurecr.io/hcmatrix_staging_app:latest
+          docker push hcmatrixmoved.azurecr.io/hcmatrix_app:${{ env.IMAGE_TAG }}
+          docker push hcmatrixmoved.azurecr.io/hcmatrix_app:latest
+
   deploy:
     name: Deploy to Azure
     runs-on: ubuntu-latest
     needs: build-and-push
     environment: ${{ inputs.environment }}
+    env:
+      IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
 
     steps:
       - name: Checkout repository
@@ -93,52 +102,99 @@ jobs:
       - name: Log in to Azure
         uses: azure/login@v1
         with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+          creds: ${{ secrets.AZURE_CREDENTIALS }} # Ensure this service principal has rights to the new subscription/resources
 
       - name: Set Deployment Variables
+        id: set_vars # Added id to potentially use outputs if needed elsewhere
         run: |
           if [[ "${{ inputs.environment }}" == "production" ]]; then
             echo "RESOURCE_GROUP=HCM-Production" >> $GITHUB_ENV
-            echo "CLUSTER_NAME=hcmatrix-aks" >> $GITHUB_ENV
+            echo "CLUSTER_NAME=hcmatrix-aks-moved" >> $GITHUB_ENV # Updated AKS cluster name
             echo "DEPLOYMENT_TYPE=AKS" >> $GITHUB_ENV
-          else
+            echo "NAMESPACE=hcmatrix-prod" >> $GITHUB_ENV
+            echo "IMAGE_PULL_NAME=hcmatrixmoved.azurecr.io/hcmatrix_app" >> $GITHUB_ENV # Consistent image name
+          else # Staging (development)
             echo "RESOURCE_GROUP=HCM-Staging" >> $GITHUB_ENV
             echo "DEPLOYMENT_TYPE=ACI" >> $GITHUB_ENV
+            echo "ACI_CONTAINER_NAME=hcmatrix-staging-container" >> $GITHUB_ENV
+            echo "IMAGE_PULL_NAME=hcmatrixmoved.azurecr.io/hcmatrix_app" >> $GITHUB_ENV # Consistent image name
           fi
+
       - name: Deploy to AKS (Production Only)
         if: env.DEPLOYMENT_TYPE == 'AKS'
         run: |
-          az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME
-          kubectl create namespace hcmatrix-prod --dry-run=client -o yaml | kubectl apply -f -
-          kubectl delete secret hcm-secrets -n hcmatrix-prod --ignore-not-found=true
-          kubectl create secret generic hcm-secrets -n hcmatrix-prod \
+          az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --overwrite-existing
+          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl delete secret hcm-secrets -n ${{ env.NAMESPACE }} --ignore-not-found=true
+          kubectl create secret generic hcm-secrets -n ${{ env.NAMESPACE }} \
             --from-literal=CLIENT_SECRET=${{ secrets.CLIENT_SECRET }} \
-            --from-literal=KEY_VAULT_NAME=${{ secrets.KEY_VAULT_NAME }}
-          kubectl apply -f deployment.yml -n hcmatrix-prod
-          kubectl apply -f service.yml -n hcmatrix-prod
+            --from-literal=KEY_VAULT_NAME=${{ secrets.KEY_VAULT_NAME }} # Ensure these secrets are correct for the production env
+
+          # Update deployment.yml image path dynamically or ensure it's correct
+          # This example assumes deployment.yml uses a placeholder or will be updated to use the correct image
+          # You might need to sed/replace the image in deployment.yml before applying if it's hardcoded
+          # For example:
+          # sed -i "s|image:.*|image: ${{ env.IMAGE_PULL_NAME }}:${{ env.IMAGE_TAG || 'latest' }}|g" deployment.yml
+          kubectl apply -f deployment.yml -n ${{ env.NAMESPACE }}
+          kubectl apply -f service.yml -n ${{ env.NAMESPACE }}
+
       - name: Scale AKS Cluster (Production Only)
         if: env.DEPLOYMENT_TYPE == 'AKS'
         run: |
-          az aks update --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --min-count 4 --max-count 8 --enable-cluster-autoscaler
-          kubectl rollout status deployment/hcmatrix-k8s-deployment -n hcmatrix-prod
+          # Consider if scaling needs to happen on every deployment or only initially
+          az aks update --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --min-count 1 --max-count 8 --enable-cluster-autoscaler
+          kubectl rollout status deployment/hcmatrix-k8s-deployment -n ${{ env.NAMESPACE }} --timeout=5m # Added timeout
+
       - name: Deploy to ACI (Staging Only)
         if: env.DEPLOYMENT_TYPE == 'ACI'
         run: |
-          az container create --resource-group $RESOURCE_GROUP \
-            --name hcmatrix-staging-container \
-            --image hcmatrix.azurecr.io/hcmatrix_staging_app:${{ env.IMAGE_TAG }} \
-            --registry-login-server hcmatrix.azurecr.io \
+          DNS_NAME="hcmatrix-staging-app-${{ env.IMAGE_TAG }}"
+          
+          if [ -z "${{ env.IMAGE_TAG }}" ]; then
+            DNS_NAME="hcmatrix-staging-app-$(date +%Y%m%d%H%M%S)"
+          fi
+          
+          echo "Using DNS name: $DNS_NAME"
+          
+          echo "Removing existing container instance if present..."
+          az container delete --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.ACI_CONTAINER_NAME }} --yes || true
+          
+          echo "Waiting for deletion to complete..."
+          sleep 30 # Consider making this wait more robust if needed
+          
+          echo "Creating new container instance..."
+          az container create --resource-group ${{ env.RESOURCE_GROUP }} \
+            --name ${{ env.ACI_CONTAINER_NAME }} \
+            --image ${{ env.IMAGE_PULL_NAME }}:${{ env.IMAGE_TAG || 'latest' }} \
+            --os-type Linux \
+            --registry-login-server hcmatrixmoved.azurecr.io \
             --registry-username ${{ secrets.ACR_USERNAME }} \
             --registry-password ${{ secrets.ACR_PASSWORD }} \
-            --dns-name-label hcmatrix-staging-${{ env.IMAGE_TAG }} \
-            --ports 5000
+            --dns-name-label $DNS_NAME \
+            --ports 5000 \
+            --cpu 4 \
+            --memory 8 \
+            --restart-policy Always \
+            --environment-variables DEPLOY_ENV=development \
+                                  CLIENT_SECRET='${{ secrets.CLIENT_SECRET }}' \
+                                  KEY_VAULT_NAME='${{ secrets.KEY_VAULT_NAME }}' # Pass necessary env vars to ACI
+
+          echo "Checking container logs (waiting 30s for startup)..."
+          sleep 30
+          az container logs --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.ACI_CONTAINER_NAME }} || true
+
       - name: Print Logs for Debugging
+        if: always() # Run this step even if previous steps fail
         run: |
-          sleep 20  # Wait for pods to start
+          sleep 20  # Wait for resources to potentially settle
           echo "📌 Checking Deployment Logs:"
-          if [[ "$DEPLOYMENT_TYPE" == "AKS" ]]; then
-            kubectl get pods -n hcmatrix-prod
-          else
-            az container show --resource-group $RESOURCE_GROUP --name hcmatrix-staging-container --query 'instanceView.state'
+          if [[ "${{ env.DEPLOYMENT_TYPE }}" == "AKS" ]]; then
+            kubectl get pods -n ${{ env.NAMESPACE }}
+            echo "📋 Describing pods in ${{ env.NAMESPACE }} namespace:"
+            kubectl describe pods -n ${{ env.NAMESPACE }}
+            echo "📜 Recent logs from deployment hcmatrix-k8s-deployment in ${{ env.NAMESPACE }} namespace:"
+            kubectl logs deployment/hcmatrix-k8s-deployment -n ${{ env.NAMESPACE }} --all-containers --tail=100 || true
+          elif [[ "${{ env.DEPLOYMENT_TYPE }}" == "ACI" ]]; then
+            az container show --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.ACI_CONTAINER_NAME }} --query "{Name:name, State:instanceView.state, IP:ipAddress.ip, FQDN:ipAddress.fqdn, Ports:ipAddress.ports}" -o table
           fi
         shell: bash

@@ -2,8 +2,9 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: hcmatrix-k8s-deployment
+  # namespace: hcmatrix-prod # Optional: Define namespace here or rely on kubectl -n flag
 spec:
-  replicas: 4
+#  replicas: 2 # Consider managing replicas via HPA or adjust as needed
   selector:
     matchLabels:
       app: hcmatrix-chatbot
@@ -18,35 +19,39 @@ spec:
         app: hcmatrix-chatbot
     spec:
       restartPolicy: Always
-      tolerations:
-        - key: "CriticalAddonsOnly"
-          operator: "Exists"
-          effect: "NoSchedule"
+      # tolerations: # These tolerations are for running on nodes tainted for critical addons.
+      # - key: "CriticalAddonsOnly" # Ensure your new AKS cluster nodes have this taint if you need this toleration.
+      #   operator: "Exists" # Or, remove if not needed.
+      #   effect: "NoSchedule"
       containers:
         - name: hcm-container
-          image: hcmatrix.azurecr.io/hcmatrix_staging_app:latest
+          image: hcmatrixmoved.azurecr.io/hcmatrix_app:latest # MODIFIED: Updated ACR login server and image name
+          # The tag 'latest' will be used by default. If you want to pin to a specific IMAGE_TAG from the pipeline,
+          # you would typically update this field dynamically in your build.yml (e.g., using sed or kustomize)
+          # or use a GitOps approach that updates this file.
           ports:
             - containerPort: 5000
           resources:
             requests:
-              cpu: "250m"  # Request 0.25 CPU
-              memory: "512Mi"  # Request 512MB RAM
+              cpu: "250m"
+              memory: "512Mi"
             limits:
-              cpu: "500m"  # Limit to 0.5 CPU
-              memory: "1Gi"  # Limit to 1GB RAM
+              cpu: "250m"
+              memory: "750Mi"
           livenessProbe:
             httpGet:
-              path: /
+              path: / # Ensure this path is a valid health check endpoint in your app
               port: 5000
-            initialDelaySeconds: 5
+            initialDelaySeconds: 15 # Increased slightly
             periodSeconds: 10
-
+            failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /
+              path: / # Ensure this path is a valid health check endpoint in your app
               port: 5000
-            initialDelaySeconds: 3
+            initialDelaySeconds: 10 # Increased slightly
             periodSeconds: 5
+            failureThreshold: 3
           env:
             - name: CLIENT_SECRET
               valueFrom:
@@ -58,5 +63,8 @@ spec:
                 secretKeyRef:
                   name: hcm-secrets
                   key: KEY_VAULT_NAME
+            # Add any other environment variables your application needs
+            - name: DEPLOY_ENV # Example: if your app needs to know the environment
+              value: "production" # This is static here; could be set from ConfigMap or Downward API if needed dynamically per pod
       imagePullSecrets:
-        - name: acr-secret # Secrets created manually
+        - name: acr-secret # MODIFIED: Ensure this secret exists in the 'hcmatrix-prod' namespace and is configured for 'hcmatrixmoved.azurecr.io'
