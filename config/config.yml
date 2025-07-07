@@ -19,7 +19,7 @@ production:
     client_secret: $CLIENT_SECRET
     tenant_id: "ba130eca-3030-48e1-9089-c979293aeb70"
     goldlayer_container_name: "goldcontainerhcmatrix"
-    goldlayer_account_name: "goldstoragehcmatrixx"
+    goldlayer_account_name: "goldstoragehcmatrix"
     stagging_adls_name: "stagingadlshcmatrix1"
     key_vault_name: $KEY_VAULT_NAME
 
