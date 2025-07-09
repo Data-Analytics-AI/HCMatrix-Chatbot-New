@@ -144,7 +144,7 @@ async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
         print(response_data)
 
         # 🔹 Add to MongoDB buffer
-        await async_client.add_to_buffer(response_data)
+        await async_client.insert_one(response_data)
 
         return ORJSONResponse(response_data)
 
