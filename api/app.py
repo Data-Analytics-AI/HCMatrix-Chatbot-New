@@ -132,7 +132,8 @@ async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
 
         # 🔹 Store directly to MongoDB (without buffering)
         try:
-            await async_client.insert_one(response_data)
+            db_data = response_data.copy()
+            await async_client.insert_one(db_data)
             print("✅ Chat history stored successfully")
         except Exception as db_error:
             print(f"❌ Database error: {db_error}")
