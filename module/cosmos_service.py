@@ -144,7 +144,9 @@ class AsyncCosmosClient:
 
     async def insert_one(self, document):
         """Insert a single document into MongoDB (not recommended for high traffic)."""
-        await self.collection.insert_one(document)
+        doc_copy = document.copy()
+        result = await self.collection.insert_one(doc_copy)
+        return result
 
     async def fetch_many(self, query):
         """Fetch multiple documents matching the query."""
