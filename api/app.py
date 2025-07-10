@@ -3,7 +3,6 @@ from fastapi import FastAPI, HTTPException, status, Query
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import uuid
-import json
 import time
 from module.azure_oai import AzureOAI
 from module.cache_service import LRUCache
@@ -14,15 +13,6 @@ from module.gold_layer import GoldLayerUtilsAsync
 from api.schema import ChatInputSchema, ChatResponseSchema, AudioInput
 from module.spk import SpeechSynthesizerWrapper
 from azure.cognitiveservices import speech as speechsdk
-from fastapi.encoders import jsonable_encoder
-from fastapi.responses import JSONResponse # Use the standard JSONResponse
-from bson import ObjectId
-
-class CustomJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, ObjectId):
-            return str(obj)
-        return json.JSONEncoder.default(self, obj)
 
 # ===================== Initialize model and embeddings ====================
 # ===========================================================================
@@ -77,7 +67,6 @@ async_client = AsyncCosmosClient(
 )  # ✅ Async Client for cusmos DB
 
 app = FastAPI()
-app.json_encoder = CustomJSONEncoder
 origins = [
     "http://48.217.20.68:5000",
     "https://deploy-preview-301--hcmatrix-saas.netlify.app",
@@ -111,20 +100,7 @@ def home():
 # ===================== Chatbot API (Text Response Only) =======================
 @app.post("/chat", status_code=status.HTTP_200_OK, response_model=ChatResponseSchema, response_class=ORJSONResponse)
 async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
-    """Processes user queries and returns chatbot responses.
-
-    Args:
-        request_model (ChatInputSchema): The input model containing the user query
-            and employee metadata.
-
-    Returns:
-        ORJSONResponse: A JSON response containing the chatbot's answer, metadata,
-            timestamp, request ID, and chat ID.
-
-    Raises:
-        HTTPException: If the user query is empty (400).
-        HTTPException: If an unexpected server error occurs (500).
-    """
+    """Processes user queries and returns chatbot responses."""
 
     if not request_model.user_query.strip():
         raise HTTPException(status_code=400, detail="User query cannot be empty")
@@ -154,9 +130,15 @@ async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
         print("*" * 20)
         print(response_data)
 
-        # 🔹 Add to MongoDB buffer
-        await async_client.insert_one(response_data)
-
+        # 🔹 Store directly to MongoDB (without buffering)
+        try:
+            await async_client.insert_one(response_data)
+            print("✅ Chat history stored successfully")
+        except Exception as db_error:
+            print(f"❌ Database error: {db_error}")
+            # Continue with response even if DB fails
+        
+        # Return response data (without _id)
         return ORJSONResponse(response_data)
 
     except Exception as e:
