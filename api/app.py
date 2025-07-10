@@ -1,10 +1,10 @@
 from fastapi.responses import StreamingResponse, ORJSONResponse
 from fastapi import FastAPI, HTTPException, status, Query
-# 'typing.List' was removed
+from fastapi.middleware.cors import CORSMiddleware
+from typing import List
 import uuid
+import json
 import time
-from bson import ObjectId
-# 'orjson' was removed
 from module.azure_oai import AzureOAI
 from module.cache_service import LRUCache
 from module.utils import config
@@ -14,6 +14,15 @@ from module.gold_layer import GoldLayerUtilsAsync
 from api.schema import ChatInputSchema, ChatResponseSchema, AudioInput
 from module.spk import SpeechSynthesizerWrapper
 from azure.cognitiveservices import speech as speechsdk
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse # Use the standard JSONResponse
+from bson import ObjectId
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, ObjectId):
+            return str(obj)
+        return json.JSONEncoder.default(self, obj)
 
 # ===================== Initialize model and embeddings ====================
 # ===========================================================================
@@ -41,16 +50,19 @@ speech_config = speechsdk.SpeechConfig(
 wrapper = SpeechSynthesizerWrapper(speech_config)
 CHUNK_SIZE = 4096  # 4KB per chunk
 
-def custom_default(obj):
-    """Custom JSON serializer for types not supported by orjson."""
-    if isinstance(obj, ObjectId):
-        return str(obj)
-    raise TypeError
 
-
-# ✅ FIX: Added a second blank line here to satisfy E305
 async def audio_stream(text: str):
-    """Streams the synthesized audio in chunks."""
+    """Streams the synthesized audio in chunks.
+
+    Args:
+        text (str): The input text to be converted into speech.
+
+    Yields:
+        bytes: Chunks of synthesized audio data.
+
+    Raises:
+        HTTPException: If audio synthesis fails.
+    """
     audio_bytes = await wrapper.synthesize(text)  # Directly streaming from Azure
 
     if not audio_bytes:
@@ -62,9 +74,10 @@ async def audio_stream(text: str):
 
 async_client = AsyncCosmosClient(
     database_name="hcm-chatbot", collection_name="user-chat"
-)
+)  # ✅ Async Client for cusmos DB
 
 app = FastAPI()
+app.json_encoder = CustomJSONEncoder
 origins = [
     "http://48.217.20.68:5000",
     "https://deploy-preview-301--hcmatrix-saas.netlify.app",
@@ -96,9 +109,22 @@ def home():
 
 
 # ===================== Chatbot API (Text Response Only) =======================
-@app.post("/chat", status_code=status.HTTP_200_OK)
+@app.post("/chat", status_code=status.HTTP_200_OK, response_model=ChatResponseSchema, response_class=ORJSONResponse)
 async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
-    """Processes user queries and returns chatbot responses."""
+    """Processes user queries and returns chatbot responses.
+
+    Args:
+        request_model (ChatInputSchema): The input model containing the user query
+            and employee metadata.
+
+    Returns:
+        ORJSONResponse: A JSON response containing the chatbot's answer, metadata,
+            timestamp, request ID, and chat ID.
+
+    Raises:
+        HTTPException: If the user query is empty (400).
+        HTTPException: If an unexpected server error occurs (500).
+    """
 
     if not request_model.user_query.strip():
         raise HTTPException(status_code=400, detail="User query cannot be empty")
@@ -128,14 +154,11 @@ async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
         print("*" * 20)
         print(response_data)
 
-        # 🔹 Directly insert into MongoDB
+        # 🔹 Add to MongoDB buffer
         await async_client.insert_one(response_data)
 
-        return ORJSONResponse(
-            content=response_data,
-            default=custom_default
-        )
-    # ✅ FIX: Removed one blank line here to satisfy E303
+        return ORJSONResponse(response_data)
+
     except Exception as e:
         print(f"Unexpected error: {e}")
         raise HTTPException(status_code=500, detail="Unexpected server error")
@@ -152,7 +175,19 @@ async def store_chat_history(chat_data: dict):
 # ===================== Audio Synthesis API (Separate) =======================
 @app.post("/audio", status_code=200)
 async def generate_audio(input_data: AudioInput):
-    """Generates and streams speech audio from text input."""
+    """Generates and streams speech audio from text input.
+
+    Args:
+        input_data (AudioInput): The input data containing the text to be
+            converted into speech.
+
+    Returns:
+        StreamingResponse: A streamed audio response in MP3 format.
+
+    Raises:
+        HTTPException: If the input text is empty (400).
+        HTTPException: If an error occurs during audio synthesis (500).
+    """
     if not input_data.text.strip():
         raise HTTPException(status_code=400, detail="Text cannot be empty")
 
@@ -167,51 +202,71 @@ async def generate_audio(input_data: AudioInput):
 
 @app.get("/chat-history", status_code=status.HTTP_200_OK)
 async def fetch_chat_id(
-    chat_id: str = Query(..., description="Chat ID from FE"),
-    employee_id: str = Query(
-        ..., description="Employee ID to retrieve chat history from"
-    ),
-    company_id: str = Query(..., description="Employee company Id"),
-) -> ORJSONResponse:
-    """Fetches the conversation history between the user and the assistant."""
+        chat_id: str = Query(..., description="Chat ID from FE"),
+        employee_id: str = Query(
+            ..., description="Employee ID to retrieve chat history from"
+        ),
+        company_id: str = Query(..., description="Employee company Id"),
+) -> List[ChatResponseSchema]:
+    """Fetches the conversation history between the user and the assistant.
+
+    Args:
+        chat_id (str): The unique identifier for the chat session.
+        employee_id (str): The unique identifier of the employee.
+        company_id (str): The unique identifier of the company.
+
+    Returns:
+        List[ChatResponseSchema]: A list of chat history records matching the given identifiers.
+
+    Raises:
+        HTTPException: If an error occurs during retrieval.
+    """
     query = {
         "chat_id": chat_id,
         "employee_metadata.id": employee_id,
         "employee_metadata.company_id": company_id,
     }
 
-    chat_history_data = await async_client.fetch_many(query)
-    
-    return ORJSONResponse(
-        content=chat_history_data,
-        default=custom_default
-    )
+    return await async_client.fetch_many(query)  # Add await here
 
 
 @app.get("/all-chat-history", status_code=status.HTTP_200_OK)
 async def fetch_all_chat_id(
-    employee_id: str = Query(
-        ..., description="Employee ID to retrieve chat history from"
-    ),
-    company_id: str = Query(..., description="Employee company Id"),
-) -> ORJSONResponse:
-    """Fetches the complete conversation history of a user with the assistant."""
+        employee_id: str = Query(
+            ..., description="Employee ID to retrieve chat history from"
+        ),
+        company_id: str = Query(..., description="Employee company Id"),
+):
+    """Fetches the complete conversation history of a user with the assistant.
+
+    Args:
+        employee_id (str): The unique identifier of the employee.
+        company_id (str): The unique identifier of the company.
+
+    Returns:
+        dict: A grouped chat history for the given employee across all chat sessions.
+
+    Raises:
+        HTTPException: If an error occurs during retrieval.
+    """
     query = {
         "employee_metadata.id": employee_id,
         "employee_metadata.company_id": company_id,
     }
-    
-    all_history_data = await async_client.fetch_and_group_by_key(query)
-
-    return ORJSONResponse(
-        content=all_history_data,
-        default=custom_default
-    )
+    return await async_client.fetch_and_group_by_key(query)
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Handles cleanup operations when the API server stops."""
+    """Handles cleanup operations when the API server stops.
+
+    This function ensures that all active connections are properly closed,
+    including the speech synthesis wrapper, database connections, and
+    Azure Data Lake Storage (ADLS) sessions.
+
+    Raises:
+        Exception: If any shutdown operation encounters an error.
+    """
     wrapper.close_connection()
-    await async_client.on_shutdown()
-    await gold_adls_conn.close()
+    await async_client.on_shutdown()  # Ensure clean shutdown
+    await gold_adls_conn.close()  # 🔥 Ensure ADLS session cleanup
