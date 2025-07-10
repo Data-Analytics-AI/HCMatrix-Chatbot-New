@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import uuid
 import time
+from bson import ObjectId
+import orjson
 from module.azure_oai import AzureOAI
 from module.cache_service import LRUCache
 from module.utils import config
@@ -13,6 +15,13 @@ from module.gold_layer import GoldLayerUtilsAsync
 from api.schema import ChatInputSchema, ChatResponseSchema, AudioInput
 from module.spk import SpeechSynthesizerWrapper
 from azure.cognitiveservices import speech as speechsdk
+
+
+def custom_default(obj):
+    """Custom JSON serializer for types not supported by orjson."""
+    if isinstance(obj, ObjectId):
+        return str(obj)
+    raise TypeError
 
 # ===================== Initialize model and embeddings ====================
 # ===========================================================================
@@ -146,7 +155,11 @@ async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
         # 🔹 Add to MongoDB buffer
         await async_client.insert_one(response_data)
 
-        return ORJSONResponse(response_data)
+        return ORJSONResponse(
+            response_data,
+            default=custom_default
+        )
+
 
     except Exception as e:
         print(f"Unexpected error: {e}")
@@ -196,7 +209,7 @@ async def fetch_chat_id(
             ..., description="Employee ID to retrieve chat history from"
         ),
         company_id: str = Query(..., description="Employee company Id"),
-) -> List[ChatResponseSchema]:
+) -> ORJSONResponse:
     """Fetches the conversation history between the user and the assistant.
 
     Args:
@@ -216,7 +229,12 @@ async def fetch_chat_id(
         "employee_metadata.company_id": company_id,
     }
 
-    return await async_client.fetch_many(query)  # Add await here
+    chat_history_data = await async_client.fetch_many(query)
+
+    return ORJSONResponse(
+        content=chat_history_data,
+        default=custom_default
+    )
 
 
 @app.get("/all-chat-history", status_code=status.HTTP_200_OK)
@@ -225,7 +243,7 @@ async def fetch_all_chat_id(
             ..., description="Employee ID to retrieve chat history from"
         ),
         company_id: str = Query(..., description="Employee company Id"),
-):
+) -> ORJSONResponse:
     """Fetches the complete conversation history of a user with the assistant.
 
     Args:
@@ -242,7 +260,11 @@ async def fetch_all_chat_id(
         "employee_metadata.id": employee_id,
         "employee_metadata.company_id": company_id,
     }
-    return await async_client.fetch_and_group_by_key(query)
+    all_history_data = await async_client.fetch_and_group_by_key(query)
+    return ORJSONResponse(
+        content=all_history_data,
+        default=custom_default
+    )
 
 
 @app.on_event("shutdown")
