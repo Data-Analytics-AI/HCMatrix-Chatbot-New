@@ -60,7 +60,7 @@ def get_retriever(company_id: str):
     if company_id not in retriever_cache:
         retriever_cache[company_id] = vector_store.as_retriever(
             search_type="similarity",
-            search_kwargs={"k": 5, "filter": {"company_id": company_id}}
+            search_kwargs={"k": 8, "filter": {"company_id": company_id}}
         )
     return retriever_cache[company_id]
 
