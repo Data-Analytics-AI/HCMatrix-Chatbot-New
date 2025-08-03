@@ -7,49 +7,42 @@ from hcm_chatbot.rag_layer import rag_layer_agent
 from module.utils import timing_decorator
 from module.query_classifier import classify_query
 
+from langchain.agents import AgentExecutor, create_openai_tools_agent
+from langchain_core.prompts import ChatPromptTemplate
+from hcm_chatbot.tools import create_sql_tool, create_rag_tool # The new tool functions
 
-@timing_decorator
-@classify_query
+# Define the master agent's prompt
+# Note: The placeholder {agent_scratchpad} is crucial for the agent to "think"
+agent_prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant for company employees. You have access to tools to answer questions about company policy and an employee's personal data. Use the tools as needed to construct a complete answer."),
+    ("human", "{input}"),
+    ("placeholder", "{agent_scratchpad}"),
+])
+
 async def chatbot_entry_execution(
         user_query: str,
         employee_metadata: EmployeeMetadataSchema,
         llm_4o: AzureChatOpenAI,
         gold_adls_conn: GoldLayerUtilsAsync,
         chatbot_cache: LRUCache,
-        layer: str
 ) -> str:
     """
-    Routes the user query to the appropriate processing layer based on classification.
-
-    This function relies on the `classify_query` decorator to first categorize the user
-    query as either SQL-related or RAG-related. If classified as SQL-related, the query
-    is handled by the SQL agent. Otherwise, it is processed using the retrieval-augmented
-    generation (RAG) layer.
-
-    Args:
-        user_query (str): The input query from the user.
-        employee_metadata (EmployeeMetadataSchema): Employee details containing company ID, user ID, etc.
-        llm_4o (AzureChatOpenAI): The language model used for query processing.
-        gold_adls_conn (GoldLayerUtilsAsync): Connection utility for accessing structured data storage.
-        chatbot_cache (LRUCache): Cache for user specific data.
-        layer (str): The processing layer determined by classification ('SQL' or 'RAG').
-
-    Returns:
-        str: The final response generated from the selected processing layer.
+    This function now uses a tool-based agent to answer complex queries.
     """
     print(f"User question: {user_query}")
 
-    if layer == 'SQL':
-        sql_agent_response = await sql_layer_agent(
-            employee_metadata.company_id,
-            employee_metadata.id,
-            user_query,
-            llm_4o,
-            gold_adls_conn,
-            chatbot_cache,
-        )
-        return sql_agent_response.strip()
+    # 1. Create the tools for this specific employee
+    sql_tool = create_sql_tool(llm_4o, gold_adls_conn, chatbot_cache, employee_metadata)
+    rag_tool = create_rag_tool(llm_4o, employee_metadata)
+    tools = [sql_tool, rag_tool]
 
-    # Instead, it should use the RAG layer
-    answer = await rag_layer_agent(user_query, llm_4o, company_id=employee_metadata.company_id)
-    return answer
+    # 2. Create the agent
+    agent = create_openai_tools_agent(llm_4o, tools, agent_prompt)
+    
+    # 3. Create the Agent Executor, which runs the agent and its tools
+    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True) # verbose=True is great for debugging
+
+    # 4. Invoke the agent
+    response = await agent_executor.ainvoke({"input": user_query})
+
+    return response['output']
