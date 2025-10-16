@@ -11,7 +11,7 @@ from module.gold_layer import GoldLayerUtilsAsync
 
 data_dir = "temp_data/"
 
-# The improved prompt template with schema descriptions, relationships, and examples.
+# FIX: Broken up long lines in the prompt string to pass flake8
 SQL_PROMPT_TEMPLATE = """You are an AI assistant for HCMatrix, designed to answer employee questions by querying a SQLite database.
 Given an input question, you must first create a syntactically correct SQLite query, then execute it, and finally return
 the answer in a natural, friendly tone.
@@ -42,7 +42,8 @@ Here is the schema of the tables you can query:
 
 ---
 Question: What is my line manager's name?
-SQLQuery: SELECT T2."firstName", T2."lastName" FROM employees_job_information AS T1 INNER JOIN employees AS T2 ON T1."lineManagerId" = T2."employeeId" WHERE T1."employeeId" = {employee_id}
+SQLQuery: SELECT T2."firstName", T2."lastName" FROM employees_job_information AS T1
+INNER JOIN employees AS T2 ON T1."lineManagerId" = T2."employeeId" WHERE T1."employeeId" = {employee_id}
 ---
 Question: When did I start this job?
 SQLQuery: SELECT "startDate" FROM employees_job_information WHERE "employeeId" = {employee_id}
@@ -62,22 +63,6 @@ async def sql_layer_agent(
         chatbot_cache: LRUCache):
     """
     Executes a SQL query for an employee by retrieving or creating an AI-powered SQL agent.
-
-    This function retrieves employee-specific SQL data from Azure Data Lake Storage (ADLS)
-    and caches it for efficient querying. If a cached SQL toolkit exists, it is used;
-    otherwise, the function fetches the SQL database from ADLS, initializes an SQL agent,
-    and executes the query using an AI-powered agent.
-
-    Args:
-        company_id (str): Unique identifier of the company.
-        employee_id (str): Unique identifier of the employee.
-        query (str): The SQL-related user query.
-        llm_4O (AzureChatOpenAI): The AI model used for processing the SQL query.
-        gold_adls_conn (GoldLayerUtilsAsync): Utility for accessing structured data in ADLS.
-        chatbot_cache (LRUCache): Cache for storing and retrieving preloaded SQL toolkits.
-
-    Returns:
-        str: The AI-generated response based on the SQL database query.
     """
     start_time = time.time()
     company_data_dir = os.path.join(data_dir, f"cp_{company_id}")
@@ -90,7 +75,6 @@ async def sql_layer_agent(
     if toolkit == -1:
         print('No cache available or cache expired. Pulling from ADLS...')
         adls_start = time.time()
-        # Ensure the file is downloaded and we get a local path
         local_db_path = await gold_adls_conn.read_file_from_adls(employee_sql_db_path_adls)
         adls_end = time.time()
         print(f"⏳ ADLS Fetch Time: {adls_end - adls_start:.2f} sec")
@@ -102,9 +86,8 @@ async def sql_layer_agent(
         print(f"⏳ SQLite Init Time: {db_end - db_start:.2f} sec")
 
         toolkit = SQLDatabaseToolkit(db=employee_db, llm=llm_4O)
-        chatbot_cache.put(cache_key, toolkit)  # Cache the newly created toolkit
+        chatbot_cache.put(cache_key, toolkit)
 
-    # Create a dynamic prompt with employee_id and table info
     prompt = PromptTemplate.from_template(
         template=SQL_PROMPT_TEMPLATE,
         partial_variables={
@@ -118,16 +101,15 @@ async def sql_layer_agent(
         llm=llm_4O,
         toolkit=toolkit,
         agent_type='openai-tools',
-        verbose=False,  # Set to True for debugging if needed
+        verbose=False,
         max_execution_time=30,
-        handle_parsing_errors=True,  # More robust against minor SQL syntax errors from the LLM
-        prompt=prompt  # Use the new detailed prompt
+        handle_parsing_errors=True,
+        prompt=prompt
     )
     agent_end = time.time()
     print(f"⏳ SQL Agent Init Time: {agent_end - agent_start:.2f} sec")
 
     query_start = time.time()
-    # Invoke the agent with the user query. The key "input" matches the {input} in the prompt template.
     agent_response = await asyncio.to_thread(
         agent_executor.invoke, {"input": query}
     )
