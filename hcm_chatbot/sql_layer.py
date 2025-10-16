@@ -1,3 +1,5 @@
+# hcm_chatbot/sql_layer.py
+
 import os
 import time
 import asyncio
@@ -11,7 +13,7 @@ from module.gold_layer import GoldLayerUtilsAsync
 
 data_dir = "temp_data/"
 
-# FIX: Broken up long lines in the prompt string to pass flake8
+# FIX: Broke the long SQLQuery example onto multiple lines to pass E501 check.
 SQL_PROMPT_TEMPLATE = """You are an AI assistant for HCMatrix, designed to answer employee questions by querying a SQLite database.
 Given an input question, you must first create a syntactically correct SQLite query, then execute it, and finally return
 the answer in a natural, friendly tone.
