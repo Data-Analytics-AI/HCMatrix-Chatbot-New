@@ -121,17 +121,23 @@ jobs:
           az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --overwrite-existing
           
           echo "Applying Kubernetes manifests (Namespace, Service, Secrets)..."
+          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply -f deployment.yml -n ${{ env.NAMESPACE }}
           kubectl apply -f service.yml -n ${{ env.NAMESPACE }}
-          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
           
           kubectl delete secret hcm-secrets -n ${{ env.NAMESPACE }} --ignore-not-found=true
           kubectl create secret generic hcm-secrets -n ${{ env.NAMESPACE }} \
             --from-literal=CLIENT_SECRET='${{ secrets.CLIENT_SECRET }}' \
             --from-literal=KEY_VAULT_NAME='${{ secrets.KEY_VAULT_NAME }}'
-            
+          
+          echo "Getting container name from deployment..."
+          CONTAINER_NAME=$(kubectl get deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} -o jsonpath='{.spec.template.spec.containers[0].name}')
+          echo "Container name: $CONTAINER_NAME"
+          
           echo "Updating deployment image to tag: ${{ env.IMAGE_TAG }}"
-          kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} ${{ env.DEPLOYMENT_NAME }}=${{ env.IMAGE_PULL_NAME }}:${{ env.IMAGE_TAG }} -n ${{ env.NAMESPACE }}
+          kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
+            $CONTAINER_NAME=${{ env.IMAGE_PULL_NAME }}:${{ env.IMAGE_TAG }} \
+            -n ${{ env.NAMESPACE }}
           
           echo "Waiting for deployment rollout to complete..."
           kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} --timeout=5m
