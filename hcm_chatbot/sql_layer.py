@@ -13,50 +13,40 @@ from module.gold_layer import GoldLayerUtilsAsync
 
 data_dir = "temp_data/"
 
+# --- CORRECTED PROMPT TEMPLATE ---
+# This prompt now accurately reflects the schema from your screenshot.
 SQL_PROMPT_TEMPLATE = """You are an AI assistant for HCMatrix, designed to answer employee questions by querying a SQLite database.
 Given an input question, you must first create a syntactically correct SQLite query, then execute it, and finally return
 the answer in a natural, friendly tone.
 You are currently assisting employee with ID: {employee_id}. Frame all queries for this specific employee.
 
 **IMPORTANT RULES:**
-1.  **NEVER** query all columns from a table. Only select the specific columns needed to answer the question.
-2.  Pay attention to which table contains the information you need.
-3.  Do not make up information. If the answer is not in the database, say "I'm sorry, I couldn't find that information in your records."
-4.  Do not expose table or column names in your final answer. Just give the answer.
+1.  **NEVER** query all columns from a table. Only select the specific columns needed.
+2.  If the answer is not in the database, say "I'm sorry, I couldn't find that information in your records."
+3.  Do not expose table or column names in your final answer. Just give the answer.
 
 **DATABASE SCHEMA AND RELATIONSHIPS:**
-
-Here is the schema of the tables you can query:
 {table_info}
 
 **KEY RELATIONSHIPS TO REMEMBER:**
 
--   To find an employee's **Line Manager's Name**:
-    1.  Find the `lineManagerId` from the `employees_job_information` table using the employee's `employeeId`.
-    2.  Use that `lineManagerId` to look up the manager's details in the `employees` table where the `employeeId` matches the `lineManagerId`.
+-   To find an employee's **own name**:
+    1.  Query the `employees_personal_information` table.
+    2.  Use the `firstName` and `lastName` columns where the `employeeId` matches {employee_id}.
 
--   To find an employee's **Current Salary**:
-    1.  Query the `employees_salary_history` table for the `employeeId`.
-    2.  The current salary is the record where the `to` column is NULL.
+-   To find an employee's **Line Manager's Name**:
+    1.  First, get the `lineManagerId` from the `employees_job_information` table for the current `employeeId`.
+    2.  Then, use that `lineManagerId` to find the manager in the `employees_manager` table by matching it to the `employeeId` column.
+    3.  The manager's name is in the `mgr_firstName` and `mgr_lastName` columns of the `employees_manager` table.
 
 **EXAMPLE QUERIES:**
 
 ---
+Question: What is my name?
+SQLQuery: SELECT "firstName", "lastName" FROM employees_personal_information WHERE "employeeId" = {employee_id}
+---
 Question: What is my line manager's name?
-SQLQuery: SELECT T2."firstName", T2."lastName"
-FROM employees_job_information AS T1
-INNER JOIN employees AS T2 ON T1."lineManagerId" = T2."employeeId"
-WHERE T1."employeeId" = {employee_id}
----
-Question: When did I start this job?
-SQLQuery: SELECT "startDate"
-FROM employees_job_information
-WHERE "employeeId" = {employee_id}
----
-Question: How much do I earn per month?
-SQLQuery: SELECT "monthlyGross"
-FROM employees_salary_history
-WHERE "employeeId" = {employee_id} AND "to" IS NULL
+SQLQuery: SELECT T2."mgr_firstName", T2."mgr_lastName" FROM employees_job_information AS T1 INNER JOIN employees_manager AS T2 ON T1."lineManagerId" = T2."employeeId" WHERE T1."employeeId" = {employee_id}
 ---
 
 **User Question:**
@@ -84,9 +74,14 @@ async def sql_layer_agent(
     if toolkit == -1:
         print('No cache available or cache expired. Pulling from ADLS...')
         adls_start = time.time()
-        local_db_path = await gold_adls_conn.read_file_from_adls(
-            employee_sql_db_path_adls
-        )
+        try:
+            local_db_path = await gold_adls_conn.read_file_from_adls(
+                employee_sql_db_path_adls
+            )
+        except Exception as e:
+            print(f"FATAL ERROR: Could not download database from ADLS. Error: {e}")
+            return "I'm sorry, I was unable to access your data. Please contact support."
+
         adls_end = time.time()
         print(f"⏳ ADLS Fetch Time: {adls_end - adls_start:.2f} sec")
 
@@ -94,13 +89,16 @@ async def sql_layer_agent(
         employee_db = await asyncio.to_thread(
             SQLDatabase.from_uri, f"sqlite:///{local_db_path}"
         )
-        print(f"Usable tables: {employee_db.get_usable_table_names()}")
         db_end = time.time()
         print(f"⏳ SQLite Init Time: {db_end - db_start:.2f} sec")
 
         toolkit = SQLDatabaseToolkit(db=employee_db, llm=llm_4O)
         chatbot_cache.put(cache_key, toolkit)
 
+    # --- LOGGING FIX ---
+    # This will now print the table names on every single run, whether from cache or new.
+    print(f"Usable tables: {toolkit.db.get_usable_table_names()}")
+    
     prompt = PromptTemplate.from_template(
         template=SQL_PROMPT_TEMPLATE,
         partial_variables={
@@ -114,7 +112,7 @@ async def sql_layer_agent(
         llm=llm_4O,
         toolkit=toolkit,
         agent_type='openai-tools',
-        verbose=False,
+        verbose=True,  # Set to True to see the agent's thought process for debugging
         max_execution_time=30,
         handle_parsing_errors=True,
         prompt=prompt
@@ -123,9 +121,16 @@ async def sql_layer_agent(
     print(f"⏳ SQL Agent Init Time: {agent_end - agent_start:.2f} sec")
 
     query_start = time.time()
-    agent_response = await asyncio.to_thread(
-        agent_executor.invoke, {"input": query}
-    )
+    try:
+        agent_response = await asyncio.to_thread(
+            agent_executor.invoke, {"input": query}
+        )
+        response = agent_response['output']
+    except Exception as e:
+        print(f"ERROR during agent execution: {e}")
+        response = ("Sorry, I encountered an error while processing your request. "
+                    "Please try rephrasing or contact your HR department.")
+
     query_end = time.time()
     print(f"⏳ Query Execution Time: {query_end - query_start:.2f} sec")
 
