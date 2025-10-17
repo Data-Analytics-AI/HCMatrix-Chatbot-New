@@ -141,10 +141,21 @@ jobs:
       - name: Scale AKS Cluster (Production Only)
         if: env.DEPLOYMENT_TYPE == 'AKS'
         run: |
-          # Consider if scaling needs to happen on every deployment or only initially
-          az aks update --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --min-count 1 --max-count 8 --enable-cluster-autoscaler
-          kubectl rollout status deployment/hcmatrix-k8s-deployment -n ${{ env.NAMESPACE }} --timeout=5m # Added timeout
+          az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --overwrite-existing
+          kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+          kubectl delete secret hcm-secrets -n ${{ env.NAMESPACE }} --ignore-not-found=true
+          kubectl create secret generic hcm-secrets -n ${{ env.NAMESPACE }} \
+            --from-literal=CLIENT_SECRET=${{ secrets.CLIENT_SECRET }} \
+            --from-literal=KEY_VAULT_NAME=${{ secrets.KEY_VAULT_NAME }}
 
+          # Update the image tag in deployment.yml to use the specific timestamped tag
+          sed -i "s|image: hcmatrixmoved.azurecr.io/hcmatrix_app:.*|image: ${{ env.IMAGE_PULL_NAME }}:${{ env.IMAGE_TAG }}|g" deployment.yml
+          
+          kubectl apply -f deployment.yml -n ${{ env.NAMESPACE }}
+          kubectl apply -f service.yml -n ${{ env.NAMESPACE }}
+          
+          # Force a rollout to ensure new image is pulled
+          kubectl rollout restart deployment/hcmatrix-k8s-deployment -n ${{ env.NAMESPACE }}
       - name: Deploy to ACI (Staging Only)
         if: env.DEPLOYMENT_TYPE == 'ACI'
         run: |
