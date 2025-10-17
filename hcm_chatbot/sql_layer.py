@@ -13,7 +13,6 @@ from module.gold_layer import GoldLayerUtilsAsync
 
 data_dir = "temp_data/"
 
-# FIX: Broke the long SQLQuery example onto multiple lines to pass E501 check.
 SQL_PROMPT_TEMPLATE = """You are an AI assistant for HCMatrix, designed to answer employee questions by querying a SQLite database.
 Given an input question, you must first create a syntactically correct SQLite query, then execute it, and finally return
 the answer in a natural, friendly tone.
@@ -44,14 +43,20 @@ Here is the schema of the tables you can query:
 
 ---
 Question: What is my line manager's name?
-SQLQuery: SELECT T2."firstName", T2."lastName" FROM employees_job_information AS T1
-INNER JOIN employees AS T2 ON T1."lineManagerId" = T2."employeeId" WHERE T1."employeeId" = {employee_id}
+SQLQuery: SELECT T2."firstName", T2."lastName"
+FROM employees_job_information AS T1
+INNER JOIN employees AS T2 ON T1."lineManagerId" = T2."employeeId"
+WHERE T1."employeeId" = {employee_id}
 ---
 Question: When did I start this job?
-SQLQuery: SELECT "startDate" FROM employees_job_information WHERE "employeeId" = {employee_id}
+SQLQuery: SELECT "startDate"
+FROM employees_job_information
+WHERE "employeeId" = {employee_id}
 ---
 Question: How much do I earn per month?
-SQLQuery: SELECT "monthlyGross" FROM employees_salary_history WHERE "employeeId" = {employee_id} AND "to" IS NULL
+SQLQuery: SELECT "monthlyGross"
+FROM employees_salary_history
+WHERE "employeeId" = {employee_id} AND "to" IS NULL
 ---
 
 **User Question:**
@@ -69,7 +74,9 @@ async def sql_layer_agent(
     start_time = time.time()
     company_data_dir = os.path.join(data_dir, f"cp_{company_id}")
     company_sql_dir = os.path.join(company_data_dir, f"cp_{company_id}_sql")
-    employee_sql_db_path_adls = os.path.join(company_sql_dir, f"emp_{employee_id}_sql_db.db")
+    employee_sql_db_path_adls = os.path.join(
+        company_sql_dir, f"emp_{employee_id}_sql_db.db"
+    )
 
     cache_key = f"{company_id}_{employee_id}"
     toolkit = chatbot_cache.get(cache_key)
@@ -77,12 +84,16 @@ async def sql_layer_agent(
     if toolkit == -1:
         print('No cache available or cache expired. Pulling from ADLS...')
         adls_start = time.time()
-        local_db_path = await gold_adls_conn.read_file_from_adls(employee_sql_db_path_adls)
+        local_db_path = await gold_adls_conn.read_file_from_adls(
+            employee_sql_db_path_adls
+        )
         adls_end = time.time()
         print(f"⏳ ADLS Fetch Time: {adls_end - adls_start:.2f} sec")
 
         db_start = time.time()
-        employee_db = await asyncio.to_thread(SQLDatabase.from_uri, f"sqlite:///{local_db_path}")
+        employee_db = await asyncio.to_thread(
+            SQLDatabase.from_uri, f"sqlite:///{local_db_path}"
+        )
         print(f"Usable tables: {employee_db.get_usable_table_names()}")
         db_end = time.time()
         print(f"⏳ SQLite Init Time: {db_end - db_start:.2f} sec")
@@ -128,7 +139,10 @@ async def sql_layer_agent(
     ]
 
     if response in wrong_response_list:
-        return ("Sorry, I couldn't get the best response to your query. "
-                "Kindly reach out to your HR department for the best response to your query or retry.")
+        return (
+            "Sorry, I couldn't get the best response to your query. "
+            "Kindly reach out to your HR department for the best response "
+            "to your query or retry."
+        )
 
     return response
