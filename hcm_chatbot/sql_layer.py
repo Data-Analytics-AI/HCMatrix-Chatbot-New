@@ -10,34 +10,28 @@ from langchain.prompts import PromptTemplate
 from langchain_community.agent_toolkits import create_sql_agent
 from langchain_community.agent_toolkits.sql.toolkit import SQLDatabaseToolkit
 from module.gold_layer import GoldLayerUtilsAsync
+from langchain.callbacks.stdout import StdOutCallbackHandler  # <-- IMPORT THIS
 
 data_dir = "temp_data/"
 
-# --- CORRECTED PROMPT TEMPLATE ---
-# This prompt now accurately reflects the schema from your screenshot.
-SQL_PROMPT_TEMPLATE = """You are an AI assistant for HCMatrix, designed to answer employee questions by querying a SQLite database.
-Given an input question, you must first create a syntactically correct SQLite query, then execute it, and finally return
-the answer in a natural, friendly tone.
-You are currently assisting employee with ID: {employee_id}. Frame all queries for this specific employee.
+# --- FINAL REFINED PROMPT TEMPLATE ---
+SQL_PROMPT_TEMPLATE = """You are an expert SQLite AI assistant for HCMatrix. Your goal is to answer employee questions by generating and running SQL queries against their personal database.
+You are assisting the employee with ID: {employee_id}.
 
 **IMPORTANT RULES:**
-1.  **NEVER** query all columns from a table. Only select the specific columns needed.
-2.  If the answer is not in the database, say "I'm sorry, I couldn't find that information in your records."
-3.  Do not expose table or column names in your final answer. Just give the answer.
+1.  **Always** use the `{employee_id}` in your WHERE clauses to filter for the current user's data.
+2.  Only query the columns you absolutely need.
+3.  Do not expose table or column names in your final answer. Just give the answer in a friendly, natural tone.
+4.  If the answer isn't in the database, say "I'm sorry, I couldn't find that information in your records."
 
 **DATABASE SCHEMA AND RELATIONSHIPS:**
 {table_info}
 
 **KEY RELATIONSHIPS TO REMEMBER:**
 
--   To find an employee's **own name**:
-    1.  Query the `employees_personal_information` table.
-    2.  Use the `firstName` and `lastName` columns where the `employeeId` matches {employee_id}.
-
--   To find an employee's **Line Manager's Name**:
-    1.  First, get the `lineManagerId` from the `employees_job_information` table for the current `employeeId`.
-    2.  Then, use that `lineManagerId` to find the manager in the `employees_manager` table by matching it to the `employeeId` column.
-    3.  The manager's name is in the `mgr_firstName` and `mgr_lastName` columns of the `employees_manager` table.
+-   The `employees_personal_information` table contains the **current employee's** own name and personal details.
+-   The `employees_job_information` table contains the `lineManagerId` for the current employee.
+-   The `employees_manager` table contains the names of **managers**, accessible by joining `employees_job_information.lineManagerId` with `employees_manager.employeeId`.
 
 **EXAMPLE QUERIES:**
 
@@ -45,7 +39,7 @@ You are currently assisting employee with ID: {employee_id}. Frame all queries f
 Question: What is my name?
 SQLQuery: SELECT "firstName", "lastName" FROM employees_personal_information WHERE "employeeId" = {employee_id}
 ---
-Question: What is my line manager's name?
+Question: Who is my line manager?
 SQLQuery: SELECT T2."mgr_firstName", T2."mgr_lastName" FROM employees_job_information AS T1 INNER JOIN employees_manager AS T2 ON T1."lineManagerId" = T2."employeeId" WHERE T1."employeeId" = {employee_id}
 ---
 
@@ -95,8 +89,7 @@ async def sql_layer_agent(
         toolkit = SQLDatabaseToolkit(db=employee_db, llm=llm_4O)
         chatbot_cache.put(cache_key, toolkit)
 
-    # --- LOGGING FIX ---
-    # This will now print the table names on every single run, whether from cache or new.
+    # Now that we're sure 'toolkit' is an object (either from cache or newly created), we can use it.
     print(f"Usable tables: {toolkit.db.get_usable_table_names()}")
     
     prompt = PromptTemplate.from_template(
@@ -112,7 +105,7 @@ async def sql_layer_agent(
         llm=llm_4O,
         toolkit=toolkit,
         agent_type='openai-tools',
-        verbose=True,  # Set to True to see the agent's thought process for debugging
+        verbose=True,  # Keep this for fallback logging
         max_execution_time=30,
         handle_parsing_errors=True,
         prompt=prompt
@@ -122,8 +115,13 @@ async def sql_layer_agent(
 
     query_start = time.time()
     try:
+        # --- LOGGING FIX ---
+        # Use the callback handler to guarantee verbose output to the console
+        handler = StdOutCallbackHandler()
         agent_response = await asyncio.to_thread(
-            agent_executor.invoke, {"input": query}
+            agent_executor.invoke,
+            {"input": query},
+            {"callbacks": [handler]}
         )
         response = agent_response['output']
     except Exception as e:
@@ -134,7 +132,6 @@ async def sql_layer_agent(
     query_end = time.time()
     print(f"⏳ Query Execution Time: {query_end - query_start:.2f} sec")
 
-    response = agent_response['output']
     total_time = time.time() - start_time
     print(f"🚀 Total Execution Time: {total_time:.2f} sec")
 
