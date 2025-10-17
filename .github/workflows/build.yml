@@ -120,7 +120,7 @@ jobs:
           echo "Connecting to AKS cluster..."
           az aks get-credentials --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.CLUSTER_NAME }} --overwrite-existing
           
-          echo "Applying Kubernetes manifests (Namespace, Service, Secrets)..."
+          echo "Applying Kubernetes manifests and Secrets..."
           kubectl create namespace ${{ env.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
           kubectl apply -f deployment.yml -n ${{ env.NAMESPACE }}
           kubectl apply -f service.yml -n ${{ env.NAMESPACE }}
@@ -129,18 +129,44 @@ jobs:
           kubectl create secret generic hcm-secrets -n ${{ env.NAMESPACE }} \
             --from-literal=CLIENT_SECRET='${{ secrets.CLIENT_SECRET }}' \
             --from-literal=KEY_VAULT_NAME='${{ secrets.KEY_VAULT_NAME }}'
-          
-          echo "Getting container name from deployment..."
-          CONTAINER_NAME=$(kubectl get deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} -o jsonpath='{.spec.template.spec.containers[0].name}')
-          echo "Container name: $CONTAINER_NAME"
-          
+            
           echo "Updating deployment image to tag: ${{ env.IMAGE_TAG }}"
-          kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} \
-            $CONTAINER_NAME=${{ env.IMAGE_PULL_NAME }}:${{ env.IMAGE_TAG }} \
-            -n ${{ env.NAMESPACE }}
+          kubectl set image deployment/${{ env.DEPLOYMENT_NAME }} *=${{ env.IMAGE_PULL_NAME }}:${{ env.IMAGE_TAG }} -n ${{ env.NAMESPACE }}
           
           echo "Waiting for deployment rollout to complete..."
-          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} --timeout=5m
+          # We add '|| true' so the workflow continues even if the rollout times out, allowing us to run debug commands.
+          kubectl rollout status deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} --timeout=5m || true
+
+      - name: Debug AKS Deployment (Production Only)
+        if: env.DEPLOYMENT_TYPE == 'AKS' && always()
+        run: |
+          echo " "
+          echo "---------------------------------------------------------"
+          echo " AKS DEPLOYMENT DEBUGGING INFO"
+          echo "---------------------------------------------------------"
+          
+          echo ">>> Describing deployment status:"
+          kubectl describe deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }}
+
+          echo " "
+          echo ">>> Listing pods and their status:"
+          kubectl get pods -n ${{ env.NAMESPACE }} -o wide
+
+          echo " "
+          echo ">>> Describing the events in the namespace (shows ImagePull errors, etc.):"
+          kubectl get events -n ${{ env.NAMESPACE }} --sort-by='.lastTimestamp'
+          
+          echo " "
+          echo ">>> Checking logs from the latest pod:"
+          # Get the name of the newest pod, even if it's failing
+          LATEST_POD=$(kubectl get pods -n ${{ env.NAMESPACE }} --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1:].metadata.name}')
+          if [ -n "$LATEST_POD" ]; then
+            echo "Logs from pod: $LATEST_POD"
+            kubectl logs $LATEST_POD -n ${{ env.NAMESPACE }} --all-containers --tail=100 || echo "Could not retrieve logs for pod $LATEST_POD."
+          else
+            echo "No pods found to retrieve logs from."
+          fi
+          echo "---------------------------------------------------------"
 
       - name: Deploy to ACI (Staging Only)
         if: env.DEPLOYMENT_TYPE == 'ACI'
@@ -170,16 +196,10 @@ jobs:
                                   CLIENT_SECRET='${{ secrets.CLIENT_SECRET }}' \
                                   KEY_VAULT_NAME='${{ secrets.KEY_VAULT_NAME }}'
 
-      - name: Print Logs for Debugging
-        if: always()
+      - name: Print ACI Logs for Debugging
+        if: env.DEPLOYMENT_TYPE == 'ACI' && always()
         run: |
           sleep 20 
-          echo "📌 Checking Deployment Logs:"
-          if [[ "${{ env.DEPLOYMENT_TYPE }}" == "AKS" ]]; then
-            echo "📜 Recent logs from deployment ${{ env.DEPLOYMENT_NAME }} in ${{ env.NAMESPACE }} namespace:"
-            kubectl logs deployment/${{ env.DEPLOYMENT_NAME }} -n ${{ env.NAMESPACE }} --all-containers --tail=100 || true
-          elif [[ "${{ env.DEPLOYMENT_TYPE }}" == "ACI" ]]; then
-            az container show --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.ACI_CONTAINER_NAME }} --query "{Name:name, State:instanceView.state, IP:ipAddress.ip, FQDN:ipAddress.fqdn, Ports:ipAddress.ports}" -o table
-          fi
-        shell: bash
+          echo "📌 Checking ACI Logs:"
+          az container show --resource-group ${{ env.RESOURCE_GROUP }} --name ${{ env.ACI_CONTAINER_NAME }} --query "{Name:name, State:instanceView.state, IP:ipAddress.ip, FQDN:ipAddress.fqdn, Ports:ipAddress.ports}" -o table
 
