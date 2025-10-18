@@ -8,40 +8,26 @@ from module.cache_service import LRUCache
 from api.schema import EmployeeMetadataSchema
 
 
+# The @tool decorator now only sees 'query' and can easily create a schema for it.
 @tool
-async def sql_query_tool(
-    query: str,
-    employee_metadata_dict: Dict[str, Any],
-    llm_4o: AzureChatOpenAI,
-    gold_adls_conn: GoldLayerUtilsAsync,
-    chatbot_cache: LRUCache
-) -> str:
+async def sql_query_tool(query: str) -> str:
     """
     Use this tool to answer questions about an employee's personal data, such as salary, manager,
     employment history, finance details, personal information, or role history.
     The input should be the user's direct question.
     """
-    from hcm_chatbot.sql_layer import sql_layer_agent
-
-    employee_metadata = EmployeeMetadataSchema(**employee_metadata_dict)
-    return await sql_layer_agent(
-        employee_metadata.company_id,
-        employee_metadata.id,
-        query,
-        llm_4o,
-        gold_adls_conn,
-        chatbot_cache,
-    )
+    # This function will be called by the agent, but the extra arguments will be
+    # pre-filled (bound) in the router.
+    # We'll define the function that does the real work separately.
+    pass
 
 
 @tool
-async def rag_query_tool(query: str, employee_metadata_dict: Dict[str, Any], llm_4o: AzureChatOpenAI) -> str:
+async def rag_query_tool(query: str) -> str:
     """
     Use this tool to answer general questions about company policies, such as dress code, leave policies,
     work-from-home policies, or code of conduct.
     The input should be the user's direct question.
     """
-    from hcm_chatbot.rag_layer import rag_layer_agent
-
-    employee_metadata = EmployeeMetadataSchema(**employee_metadata_dict)
-    return await rag_layer_agent(query, llm_4o, company_id=employee_metadata.company_id)
+    # Same as above, this is just a schema placeholder.
+    pass
