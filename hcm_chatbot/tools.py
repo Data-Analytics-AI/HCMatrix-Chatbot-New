@@ -2,6 +2,9 @@
 
 from langchain.tools import tool
 
+
+# ADD A BLANK LINE HERE ⬆️
+
 @tool
 async def sql_query_tool(query: str) -> str:
     """
