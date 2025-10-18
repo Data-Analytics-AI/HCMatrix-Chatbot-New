@@ -7,11 +7,15 @@ from api.schema import EmployeeMetadataSchema
 from module.gold_layer import GoldLayerUtilsAsync
 from module.cache_service import LRUCache
 
-# FIX: Removed unused imports and corrected the comment spacing
-from hcm_chatbot.tools import sql_query_tool, rag_query_tool  # The new tool functions
+# Import the tools we defined
+from hcm_chatbot.tools import sql_query_tool, rag_query_tool
+
+# Import the actual logic functions
+# (You can place these functions in any logical place, like a 'services' or 'layers' file)
+from hcm_chatbot.sql_layer import sql_layer_agent
+from hcm_chatbot.rag_layer import rag_layer_agent
 
 
-# FIX: Corrected prompt to be multi-line and under 120 chars per line
 agent_prompt = ChatPromptTemplate.from_messages(
     [
         ("system", (
@@ -26,7 +30,6 @@ agent_prompt = ChatPromptTemplate.from_messages(
 )
 
 
-# FIX: Added two blank lines for PEP 8 compliance
 async def chatbot_entry_execution(
         user_query: str,
         employee_metadata: EmployeeMetadataSchema,
@@ -39,27 +42,30 @@ async def chatbot_entry_execution(
     """
     print(f"User question: {user_query}")
     
-    # Bind the necessary arguments to the tools
-    sql_tool_with_args = sql_query_tool.bind(
-        employee_metadata_dict=employee_metadata.dict(),
-        llm_4o=llm_4o,
+    # Set the implementation for each tool
+    sql_query_tool.func = lambda query: sql_layer_agent(
+        query=query,
+        company_id=employee_metadata.company_id,
+        employee_id=employee_metadata.id,
+        llm_4O=llm_4o,
         gold_adls_conn=gold_adls_conn,
-        chatbot_cache=chatbot_cache
+        chatbot_cache=chatbot_cache,
     )
-    rag_tool_with_args = rag_query_tool.bind(
-        employee_metadata_dict=employee_metadata.dict(),
-        llm_4o=llm_4o
+    
+    rag_query_tool.func = lambda query: rag_layer_agent(
+        query=query,
+        llm_4o=llm_4o,
+        company_id=employee_metadata.company_id
     )
 
-    tools = [sql_tool_with_args, rag_tool_with_args]
+    tools = [sql_query_tool, rag_query_tool]
 
     # Create the agent
     agent = create_openai_tools_agent(llm_4o, tools, agent_prompt)
+    
+    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
-    # FIX: Corrected comment spacing
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)  # verbose=True is great for debugging
-
-    # We don't have chat history in this example, so we pass an empty list
+    # Invoke the agent
     result = await agent_executor.ainvoke({
         "input": user_query,
         "chat_history": []
