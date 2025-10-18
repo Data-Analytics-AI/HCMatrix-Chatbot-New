@@ -4,7 +4,7 @@ from module.gold_layer import GoldLayerUtilsAsync
 from module.cache_service import LRUCache
 
 # Import the classifier and the layer-specific agents
-from hcm_chatbot.query_classifier import classify_query
+from module.query_classifier import classify_query
 from hcm_chatbot.sql_layer import sql_layer_agent
 from hcm_chatbot.rag_layer import rag_layer_agent
 
