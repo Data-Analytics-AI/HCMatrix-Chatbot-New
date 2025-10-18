@@ -5,7 +5,6 @@ from module.cache_service import LRUCache
 from langchain_openai import AzureChatOpenAI
 from langchain_community.utilities import SQLDatabase
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.agents import AgentExecutor
 from langchain_community.agent_toolkits import create_sql_agent, SQLDatabaseToolkit
 from langchain_core.callbacks import StdOutCallbackHandler
 from module.gold_layer import GoldLayerUtilsAsync
@@ -55,7 +54,7 @@ async def sql_layer_agent(
         company_sql_dir, f"emp_{employee_id}_sql_db.db"
     )
 
-    cache_key = f"{company_id}_{employee_id}"
+    cache_key = f"{company_id}_{employee_id}_toolkit"
     toolkit = chatbot_cache.get(cache_key)
 
     if toolkit == -1:
@@ -84,13 +83,11 @@ async def sql_layer_agent(
 
     print(f"Usable tables: {toolkit.db.get_usable_table_names()}")
 
-    # FIX: Format the system message with the dynamic table info and employee ID
     system_message = SYSTEM_MESSAGE_TEMPLATE.format(
         table_info=toolkit.db.get_table_info(),
         employee_id=employee_id
     )
 
-    # FIX: Use the ChatPromptTemplate structure that the agent expects
     prompt = ChatPromptTemplate.from_messages(
         [
             ("system", system_message),
@@ -101,26 +98,24 @@ async def sql_layer_agent(
     )
 
     agent_start = time.time()
-    # FIX: Use the updated create_sql_agent structure which returns a runnable agent
-    agent = create_sql_agent(
+    # FIX: create_sql_agent returns the AgentExecutor directly. Do not wrap it again.
+    agent_executor = create_sql_agent(
         llm=llm_4O,
         toolkit=toolkit,
         agent_type='openai-tools',
+        verbose=True,
+        handle_parsing_errors=True,
         prompt=prompt
     )
-    
-    # FIX: Wrap the agent and tools in the final AgentExecutor
-    agent_executor = AgentExecutor(agent=agent, tools=toolkit.get_tools(), verbose=True, handle_parsing_errors=True)
     agent_end = time.time()
     print(f"⏳ SQL Agent Init Time: {agent_end - agent_start:.2f} sec")
 
     query_start = time.time()
     try:
         handler = StdOutCallbackHandler()
-        # FIX: Invoke the agent with the correct input structure, including chat_history
         agent_response = await agent_executor.ainvoke(
             {"input": query, "chat_history": []},
-            {"callbacks": [handler]}
+            config={"callbacks": [handler]}
         )
         response = agent_response['output']
     except Exception as e:
@@ -130,8 +125,22 @@ async def sql_layer_agent(
 
     query_end = time.time()
     print(f"⏳ Query Execution Time: {query_end - query_start:.2f} sec")
-
+    
     total_time = time.time() - start_time
     print(f"🚀 Total Execution Time: {total_time:.2f} sec")
 
+    # Add this check back in for robustness
+    wrong_response_list = [
+        "Agent stopped due to iteration limit or time limit.",
+        "Agent stopped due to max iterations."
+    ]
+
+    if response in wrong_response_list:
+        return (
+            "Sorry, I couldn't get the best response to your query. "
+            "Kindly reach out to your HR department for the best response "
+            "to your query or retry."
+        )
+
     return response
+
