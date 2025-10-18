@@ -1,14 +1,7 @@
 # hcm_chatbot/tools.py
 
 from langchain.tools import tool
-from typing import Dict, Any
-from langchain_openai import AzureChatOpenAI
-from module.gold_layer import GoldLayerUtilsAsync
-from module.cache_service import LRUCache
-from api.schema import EmployeeMetadataSchema
 
-
-# The @tool decorator now only sees 'query' and can easily create a schema for it.
 @tool
 async def sql_query_tool(query: str) -> str:
     """
@@ -16,9 +9,7 @@ async def sql_query_tool(query: str) -> str:
     employment history, finance details, personal information, or role history.
     The input should be the user's direct question.
     """
-    # This function will be called by the agent, but the extra arguments will be
-    # pre-filled (bound) in the router.
-    # We'll define the function that does the real work separately.
+    # The actual implementation is set dynamically in the router.
     pass
 
 
@@ -29,5 +20,5 @@ async def rag_query_tool(query: str) -> str:
     work-from-home policies, or code of conduct.
     The input should be the user's direct question.
     """
-    # Same as above, this is just a schema placeholder.
+    # The actual implementation is set dynamically in the router.
     pass
