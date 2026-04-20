@@ -59,10 +59,10 @@ async def chatbot_entry_execution(
             response = sql_agent_response.strip()
 
             # Check if the SQL response is empty or a known failure
-            is_failed = (
-                not response or
-                any(phrase in response.lower() for phrase in sql_failure_phrases)
+            has_error_phrase = any(
+                phrase in response.lower() for phrase in sql_failure_phrases
             )
+            is_failed = not response or has_error_phrase
 
             if not is_failed:
                 return response
