@@ -1,14 +1,14 @@
+from module.cache_service import LRUCache
 from langchain_openai import AzureChatOpenAI
 from api.schema import EmployeeMetadataSchema
 from module.gold_layer import GoldLayerUtilsAsync
-from module.cache_service import LRUCache
-
-# Import the classifier and the layer-specific agents
-from module.query_classifier import classify_query
 from hcm_chatbot.sql_layer import sql_layer_agent
 from hcm_chatbot.rag_layer import rag_layer_agent
+from module.utils import timing_decorator
+from module.query_classifier import classify_query
 
 
+@timing_decorator
 @classify_query
 async def chatbot_entry_execution(
         user_query: str,
@@ -16,29 +16,66 @@ async def chatbot_entry_execution(
         llm_4o: AzureChatOpenAI,
         gold_adls_conn: GoldLayerUtilsAsync,
         chatbot_cache: LRUCache,
-        layer: str  # This argument is provided by the @classify_query decorator
+        layer: str
 ) -> str:
     """
-    Routes the user query to the appropriate processing layer (SQL or RAG)
-    based on the classification from the decorator.
+    Routes the user query to the appropriate processing layer based on classification.
+
+    This function relies on the `classify_query` decorator to first categorize the user
+    query as either SQL-related or RAG-related. If classified as SQL-related, the query
+    is handled by the SQL agent. Otherwise, it is processed using the retrieval-augmented
+    generation (RAG) layer.
+
+    Args:
+        user_query (str): The input query from the user.
+        employee_metadata (EmployeeMetadataSchema): Employee details containing company ID, user ID, etc.
+        llm_4o (AzureChatOpenAI): The language model used for query processing.
+        gold_adls_conn (GoldLayerUtilsAsync): Connection utility for accessing structured data storage.
+        chatbot_cache (LRUCache): Cache for user specific data.
+        layer (str): The processing layer determined by classification ('SQL' or 'RAG').
+
+    Returns:
+        str: The final response generated from the selected processing layer.
     """
-    print(f"User question: '{user_query}' -> Routing to {layer} layer.")
+    print(f"User question: {user_query}")
+
+    # Known failure responses from the SQL layer
+    sql_failure_phrases = [
+        "sorry, couldn't get the best response",
+        "agent stopped due to iteration limit or time limit",
+        "agent stopped due to max iterations",
+    ]
 
     if layer == 'SQL':
-        response = await sql_layer_agent(
-            company_id=employee_metadata.company_id,
-            employee_id=employee_metadata.id,
-            query=user_query,
-            llm_4O=llm_4o,
-            gold_adls_conn=gold_adls_conn,
-            chatbot_cache=chatbot_cache,
-        )
-        return response.strip()
+        try:
+            sql_agent_response = await sql_layer_agent(
+                employee_metadata.company_id,
+                employee_metadata.id,
+                user_query,
+                llm_4o,
+                gold_adls_conn,
+                chatbot_cache,
+            )
+            response = sql_agent_response.strip()
 
-    # If not 'SQL', default to the RAG layer
-    response = await rag_layer_agent(
-        user_query,
-        llm_4o,
-        company_id=employee_metadata.company_id
-    )
-    return response
+            # Check if the SQL response is empty or a known failure
+            is_failed = (
+                not response
+                or any(phrase in response.lower() for phrase in sql_failure_phrases)
+            )
+
+            if not is_failed:
+                return response
+
+            print("⚠️ SQL layer returned an unsatisfactory response. Falling back to RAG layer...")
+
+        except Exception as e:
+            print(f"⚠️ SQL layer encountered an error: {e}. Falling back to RAG layer...")
+
+        # Fallback to RAG layer
+        answer = await rag_layer_agent(user_query, llm_4o, company_id=employee_metadata.company_id)
+        return answer
+
+    # Instead, it should use the RAG layer
+    answer = await rag_layer_agent(user_query, llm_4o, company_id=employee_metadata.company_id)
+    return answer
