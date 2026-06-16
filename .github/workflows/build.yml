@@ -1,29 +1,16 @@
 name: Integration Tests and Deployment
 
 on:
-  push:
-    branches:
-      - main
-      - feature_test_workflow
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Select Environment'
-        required: true
-        default: 'development'
-        type: choice
-        options:
-          - development # Staging
-          - production
 
 env:
-  DEPLOY_ENV: ${{ inputs.environment || (github.ref == 'refs/heads/main' && 'production' || 'development') }}
+  DEPLOY_ENV: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
 
 jobs:
   integration_tests:
     name: Run API Tests and Code Linting
     runs-on: ubuntu-latest
-    environment: ${{ env.DEPLOY_ENV }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     env:
       CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
       KEY_VAULT_NAME: ${{ secrets.KEY_VAULT_NAME }}
@@ -45,7 +32,7 @@ jobs:
 
       - name: Run Linting and Tests
         run: |
-          echo "Running API tests in ${{ inputs.environment }} environment..."
+          echo "Running API tests in ${{ env.DEPLOY_ENV }} environment..."
           flake8 . --count --show-source --statistics || (echo "Flake8 failed! Fix issues before merging." && exit 1)
 
   build-and-push:
@@ -92,7 +79,7 @@ jobs:
     name: Deploy to Azure
     runs-on: ubuntu-latest
     needs: build-and-push
-    environment: ${{ env.DEPLOY_ENV }}
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}
     env:
       IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
 
@@ -108,7 +95,7 @@ jobs:
       - name: Set Deployment Variables
         id: set_vars
         run: |
-          if [[ "${{ inputs.environment }}" == "production" ]]; then
+          if [[ "${{ env.DEPLOY_ENV }}" == "production" ]]; then
             echo "RESOURCE_GROUP=HCM-Production" >> $GITHUB_ENV
             echo "CLUSTER_NAME=hcmatrix-aks-moved" >> $GITHUB_ENV
             echo "DEPLOYMENT_TYPE=AKS" >> $GITHUB_ENV
