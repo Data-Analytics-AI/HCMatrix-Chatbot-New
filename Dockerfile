@@ -1,5 +1,5 @@
-# Use the official Python image
-FROM python:3.11.9
+# Use the official Python slim image
+FROM python:3.11.9-slim
 
 # Set environment variables
 ENV INSTALL_PATH=/HCMatrix-Chatbot
