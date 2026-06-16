@@ -4,7 +4,7 @@
 HC-Matrix-Chatbot is a chatbot designed for users onboarded into the HC-Matrix platform. It allows employees to inquire about their personal information and company-wide policies.
 
 ## Repository
-[GitHub Repository](https://github.com/Snapnet-AI-Data-Innovation/HCMatrix-Chatbot.git)
+[GitHub Repository](https://github.com/Data-Analytics-AI/HCMatrix-Chatbot-New.git)
 
 ## Features
 - **Conversational AI:** Employees can ask about their personal information and company policies.
@@ -17,11 +17,11 @@ HC-Matrix-Chatbot is a chatbot designed for users onboarded into the HC-Matrix p
 ## Installation
 1. Clone the repository:
    ```sh
-   git clone https://github.com/Snapnet-AI-Data-Innovation/HCMatrix-Chatbot.git
+   git clone https://github.com/Data-Analytics-AI/HCMatrix-Chatbot-New.git
    ```
 2. Navigate to the project directory:
    ```sh
-   cd HCMatrix-Chatbot
+   cd HCMatrix-Chatbot-New
    ```
 3. Install dependencies:
    ```sh
