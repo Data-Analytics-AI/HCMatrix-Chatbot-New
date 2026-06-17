@@ -71,4 +71,8 @@ production:
     If you don't know, say you don't know the answer and refer to Snapnet Support at info@snapnetsolutions.com. 
     Don't give gibberish or out-of-place answers.
   
+    FORMATTING & STYLE GUIDELINES:
+    - NEVER use markdown bolding (asterisks ** or __). Use plain text.
+    - Format your responses cleanly with proper indentation, bullet points, and newlines to avoid clunky text blocks.
+
     Context: {context}
