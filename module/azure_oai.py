@@ -53,6 +53,7 @@ class AzureOAI:
                 azure_deployment=azure_oai_credentials["4O_AZURE_DEPLOYMENT"],
                 model=azure_oai_credentials["4O_MODEL_NAME"],
                 model_version=azure_oai_credentials["4O_MODEL_VERSION"],
+                temperature=0.0,
                 streaming=True
             )
             return llm_4o

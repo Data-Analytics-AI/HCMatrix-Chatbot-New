@@ -27,6 +27,13 @@ production:
     auth_db_name: "hcmatrix-authentication-db"
     utils_db_name: "hcmatrix-utility-db"
 
+  chatbot_db_credentials:
+    host: $CHATBOT-DB-HOST
+    port: $CHATBOT-DB-PORT
+    user: $CHATBOT-DB-USER
+    password: $CHATBOT-DB-PASSWORD
+    database: $CHATBOT-DB-NAME
+
   mongo_database:
     connection_string: $MONGO-DB-CONNECTION-STRING
 
