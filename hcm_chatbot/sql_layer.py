@@ -37,7 +37,6 @@ async def sql_layer_agent(
     cache_data = chatbot_cache.get(cache_key)
 
     if cache_data == -1:
-        print('Initializing global SQL toolkit...')
         db_start = time.time()
 
         employee_db = await asyncio.to_thread(
@@ -68,9 +67,7 @@ async def sql_layer_agent(
             view_support=True,
             sample_rows_in_table_info=0
         )
-        print("Usable Tables:", employee_db.get_usable_table_names())
         db_end = time.time()
-        print(f"⏳ MySQL Init Time: {db_end - db_start:.2f} sec")
 
         toolkit = SQLDatabaseToolkit(db=employee_db, llm=llm_4O)
         chatbot_cache.put(cache_key, toolkit)  # Cache the toolkit
@@ -81,11 +78,10 @@ async def sql_layer_agent(
     agent_executor = create_sql_agent(
         llm_4O, toolkit=cache_data,
         agent_type='openai-tools',
-        verbose=True,
+        verbose=False,
         max_execution_time=30,
         handle_parsing_errors=False)
     agent_end = time.time()
-    print(f"⏳ SQL Agent Init Time: {agent_end - agent_start:.2f} sec")
 
     query_prompt = ChatPromptTemplate.from_messages(
         [
@@ -146,11 +142,9 @@ async def sql_layer_agent(
         agent_executor.invoke, query_prompt.format(company_id=company_id, employee_id=employee_id, user_query=query)
     )
     query_end = time.time()
-    print(f"⏳ Query Execution Time: {query_end - query_start:.2f} sec")
 
     response = agent_response['output']
     total_time = time.time() - start_time
-    print(f"🚀 Total Execution Time: {total_time:.2f} sec")
 
     wrong_response_list = [
         "Agent stopped due to iteration limit or time limit.",
