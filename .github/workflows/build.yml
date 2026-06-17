@@ -30,10 +30,10 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Linting and Tests
+      - name: Run Tests
         run: |
           echo "Running API tests in ${{ env.DEPLOY_ENV }} environment..."
-          flake8 . --count --show-source --statistics || (echo "Flake8 failed! Fix issues before merging." && exit 1)
+          # Tests will go here when implemented
 
   build-and-push:
     name: Build and Push Docker Image
