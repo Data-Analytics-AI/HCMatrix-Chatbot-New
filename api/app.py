@@ -9,7 +9,6 @@ from module.cache_service import LRUCache
 from module.utils import config
 from module.cosmos_service import AsyncCosmosClient
 from hcm_chatbot.router import chatbot_entry_execution
-from module.gold_layer import GoldLayerUtilsAsync
 from api.schema import ChatInputSchema, ChatResponseSchema, AudioInput
 from module.spk import SpeechSynthesizerWrapper
 from azure.cognitiveservices import speech as speechsdk
@@ -25,13 +24,13 @@ chatbot_cache = LRUCache(
     capacity=120
 )  # This cache is ephemeral to the life of the application.
 
-# initialize connection with DB to read employee sql files
-adls_credentials_params = config["production"]["adls_credentials"]
-gold_container_name = config["production"]["adls_credentials"]["goldlayer_container_name"]
-gold_account_name = config["production"]["adls_credentials"]["goldlayer_account_name"]
-gold_adls_conn = GoldLayerUtilsAsync(
-    gold_container_name, adls_credentials_params, gold_account_name
-)
+# Initialize global connection string for the Chatbot Database
+from urllib.parse import quote_plus
+db_creds = config["production"]["chatbot_db_credentials"]
+_encoded_password = quote_plus(str(db_creds['password']))
+_port = int(db_creds['port'])
+CHATBOT_DB_URI = f"mysql+mysqlconnector://{db_creds['user']}:{_encoded_password}@{db_creds['host']}:{_port}/{db_creds['database']}"
+print(f"🔗 DB URI (masked): mysql+mysqlconnector://{db_creds['user']}:****@{db_creds['host']}:{_port}/{db_creds['database']}")
 
 # Azure Speech Config
 speech_config = speechsdk.SpeechConfig(
@@ -113,14 +112,14 @@ async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
             request_model.user_query,
             request_model.employee_metadata,
             llm_4O,
-            gold_adls_conn,
+            CHATBOT_DB_URI,
             chatbot_cache,
         )
 
         current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
         response_data = {
-            "employee_metadata": request_model.employee_metadata.dict(),
+            "employee_metadata": request_model.employee_metadata.model_dump(),
             "question": request_model.user_query,
             "answer": response,
             "timestamp": current_time_str,
@@ -252,4 +251,3 @@ async def shutdown_event():
     """
     wrapper.close_connection()
     await async_client.on_shutdown()  # Ensure clean shutdown
-    await gold_adls_conn.close()  # 🔥 Ensure ADLS session cleanup
