@@ -24,47 +24,60 @@ system_prompt = SystemMessage(
 - "SQL": If the query is related to employee data, organizational data, or any factual/transactional information
   that can be looked up in the database. This includes: employee personal details, job titles, designations,
   roles (e.g. CEO, Manager, Director), salary, payroll, managers, reporting structure, employment history,
-  education, emergency contacts, skills, attendance, clock-in/clock-out records, leave balances and requests,
-  loan requests and loans, departments, holidays, vehicles and vehicle bookings, health/HMO plans, hospitals,
-  company information, and any question asking "who is", "who has", "how many", "list all", "show me", etc.
+  education, emergency contacts, attendance, clock-in/clock-out records, leave balances and requests,
+  loan requests and loans, assets, vehicles, vehicle bookings, departments, public holidays, health/HMO plans,
+  hospitals, company information, and any question asking "who is", "who has", "how many", "list all", "show me", etc.
 
 - "RAG": If the query is related to company policies, guidelines, or procedural documentation such as:
   dress code, work-from-home policies, code of conduct, leave policies, HR handbooks, onboarding guides,
   or other company policy-related queries.
 
-SQL Layer includes the following tables and their relevant data:
-- companies (company name, details, and organizational info)
-- employees (core employee records)
-- employees_manager (current manager assignments)
-- employees_personal_information (dob, gender, nationality, maritalStatus, phoneNumber, address, NIN, stateOfOrigin)
-- employees_job_information (jobContractType, workModel, hireDate, probationEndDate, lineManagerId, payroll details, workDaysPerWeek)
-- employees_designation_history (history of designation/title changes — e.g. CEO, CTO, Manager, Director, etc.)
-- employees_role_designation (current designation/title of employees — use this to find who holds a specific title like CEO, CFO, VP, etc.)
-- employees_employment_history (organization, position, startDate, endDate)
-- employees_role_history (roleId, from, to)
-- employees_manager_history (lineManagerId, currentManager)
-- employees_skills (employee skills and competencies)
-- employees_education_details (school, degree, specialization, startDate, endDate)
-- employees_emergency_contacts (fullName, relationship, phoneNumber, address)
-- employees_payrolls (payroll records and payment details)
-- employees_salary_history (salary type, frequency, monthlySalaryGross, salaryHourlyRate, from, to)
-- attendance (daily attendance records)
-- departments (department names and structure)
-- leaves (leave requests and balances)
-- leave_types (types of leave available)
-- clock-ins (employee clock-in timestamps)
-- clock-outs (employee clock-out timestamps)
-- loan_requests (employee loan applications)
-- loans (active and past employee loans)
-- holidays (company holidays and calendar)
-- vehicles (company vehicle inventory)
-- vehicle_bookings (vehicle reservation records)
-- health_access_hmo_plans (HMO/health insurance plans)
-- health_access_hospitals (hospitals in the health access network)
+SQL Layer includes the following views and their relevant data:
+
+Employee Profile Data:
+- v_employee_profile (basic employee info, job details, reporting lines)
+- v_employee_emergency_contacts (next-of-kin and emergency contact info)
+- v_employee_education (educational qualifications and academic history)
+- v_employee_employment_history (previous work experience before joining)
+
+Leave Information:
+- v_employee_leave_summary (comprehensive leave balance summary across all leave types)
+- v_employee_leaves (detailed information about each individual leave application)
+- holidays (applicable public holidays based on company and country)
+
+Payroll & Compensation:
+- v_employee_payslips (payslip summary: gross pay, net pay, deductions per period)
+- v_employee_payslip_components (breakdown of each payslip into allowances, deductions, loan components)
+- v_employee_pay_structure (configured ongoing salary structure and custom salary components)
+
+HMO / Benefits Information:
+- v_employee_hmo_profile (HMO enrollment, plan details, basic medical info)
+- v_employee_hmo_dependents (dependents covered under the employee's HMO plan)
+- v_employee_hmo_hospitals (network of hospitals under the employee's HMO plan)
+
+Loan & Advance Management:
+- v_employee_loan_eligibility (eligibility for various loan types based on employment status and service duration)
+- v_employee_loans (all active and completed loan records, balances, repayment schedules)
+- v_employee_loan_requests (pending and historical loan applications and guarantor approvals)
+- v_employee_loan_repayments (individual loan installment payments and outstanding balances)
+
+Asset / Vehicle Requests:
+- v_employee_assets (assigned assets, asset requisitions, and historical assignments)
+- v_employee_vehicles (assigned vehicles, active bookings, and vehicle assignment history)
+
+Attendance & Time Tracking:
+- v_employee_daily_attendance (daily attendance summary: clock-in/out times, hours worked, late/absence flags)
+- v_employee_latest_clock (most recent clock-in and clock-out events for real-time clock state)
+
+Public Employee Directory (global — available to all employees):
+- v_public_employee_directory (public-facing directory of non-confidential employee information)
+- v_public_departments (all departments, hierarchies, department heads, and total employee headcount)
 
 IMPORTANT: Any question about a person's title, role, designation, position (e.g. "who is the CEO",
-"who is the manager", "who is the director") is an SQL query — it requires looking up the
-employees_role_designation or employees_designation_history table.
+"who is the manager", "who is the director") is an SQL query.
+Any question about attendance, clock-in/clock-out times, or hours worked is an SQL query.
+Any question about assets, vehicles, or vehicle bookings is an SQL query.
+Any question about other employees in the company directory or department listings is an SQL query.
 
 Respond strictly in JSON format: {"category": "SQL" or "RAG"}
 """)
