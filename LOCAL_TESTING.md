@@ -2,7 +2,7 @@
 
 Welcome to the HCMatrix Chatbot testing environment! This guide explains how to get the application running locally so you can test the AI SQL Agent.
 
-## 1. Prerequisites
+## 1. Prerequisite
 - Python 3.10+
 - Git Bash or any terminal
 

@@ -16,6 +16,7 @@ async def chatbot_entry_execution(
         employee_metadata: EmployeeMetadataSchema,
         llm_4o: AzureChatOpenAI,
         chatbot_db_uri: str,
+        chatbot_db_schemas: list,
         chatbot_cache: LRUCache,
         layer: str
 ) -> str:
@@ -31,7 +32,8 @@ async def chatbot_entry_execution(
         user_query (str): The input query from the user.
         employee_metadata (EmployeeMetadataSchema): Employee details containing company ID, user ID, etc.
         llm_4o (AzureChatOpenAI): The language model used for query processing.
-        chatbot_db_uri (str): Connection URI for the MySQL database.
+        chatbot_db_uri (str): Base MySQL connection URI (no trailing database name).
+        chatbot_db_schemas (list): List of MySQL schema/database names to search for views.
         chatbot_cache (LRUCache): Cache for user specific data.
         layer (str): The processing layer determined by classification ('SQL' or 'RAG').
 
@@ -63,6 +65,7 @@ async def chatbot_entry_execution(
                 user_query,
                 llm_4o,
                 chatbot_db_uri,
+                chatbot_db_schemas,
                 chatbot_cache,
             )
             response = sql_agent_response.strip()

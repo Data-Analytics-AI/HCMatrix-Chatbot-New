@@ -40,6 +40,8 @@ def load_config_with_env(yaml_path):
         """Recursively resolves placeholders in the configuration file."""
         if isinstance(obj, dict):
             return {k: resolve_placeholders(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [resolve_placeholders(item) for item in obj]
         elif isinstance(obj, str) and obj.startswith("$"):
             secret_name = obj[1:]
 
