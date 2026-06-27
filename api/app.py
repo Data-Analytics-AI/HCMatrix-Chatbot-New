@@ -29,8 +29,21 @@ from urllib.parse import quote_plus
 db_creds = config["production"]["chatbot_db_credentials"]
 _encoded_password = quote_plus(str(db_creds['password']))
 _port = int(db_creds['port'])
-CHATBOT_DB_URI = f"mysql+mysqlconnector://{db_creds['user']}:{_encoded_password}@{db_creds['host']}:{_port}/{db_creds['database']}"
-print(f"🔗 DB URI (masked): mysql+mysqlconnector://{db_creds['user']}:****@{db_creds['host']}:{_port}/{db_creds['database']}")
+
+# Base URI — no database specified; the SQL layer will auto-discover views across schemas
+CHATBOT_DB_BASE_URI = (
+    f"mysql+mysqlconnector://{db_creds['user']}:{_encoded_password}"
+    f"@{db_creds['host']}:{_port}/"
+)
+
+# Schemas to search for views. Falls back to the single 'database' value if not configured.
+_raw_schemas = db_creds.get('schemas', [])
+CHATBOT_DB_SCHEMAS: list[str] = (
+    [s for s in _raw_schemas if s and not s.startswith('$')]  # drop unresolved placeholders
+    or [db_creds['database']]
+)
+print(f"🔗 DB host (masked): {db_creds['host']}:{_port} | Schemas: {CHATBOT_DB_SCHEMAS}")
+
 
 # Azure Speech Config
 speech_config = speechsdk.SpeechConfig(
@@ -112,7 +125,8 @@ async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
             request_model.user_query,
             request_model.employee_metadata,
             llm_4O,
-            CHATBOT_DB_URI,
+            CHATBOT_DB_BASE_URI,
+            CHATBOT_DB_SCHEMAS,
             chatbot_cache,
         )
 
