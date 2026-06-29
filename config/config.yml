@@ -34,10 +34,9 @@ production:
     password: $CHATBOT-DB-PASSWORD
     database: $CHATBOT-DB-NAME        # legacy fallback — used if schemas list is empty
     schemas:                          # list every MySQL database that contains chatbot views
-      - $CHATBOT-DB-SCHEMA-1         # e.g. hcmatrix-payroll-db
-      - $CHATBOT-DB-SCHEMA-2         # e.g. hcmatrix-authentication-db
-      - $CHATBOT-DB-SCHEMA-3         # e.g. hcmatrix-time-and-attendance-db
-      - $CHATBOT-DB-SCHEMA-4         # e.g. add more as needed
+      - "hcmatrix-payroll-db"
+      - "hcmatrix-time-and-attendance-db"
+      - "hcmatrix-utility-db"
 
 
   mongo_database:
