@@ -18,6 +18,7 @@ async def chatbot_entry_execution(
         chatbot_db_uri: str,
         chatbot_db_schemas: list,
         chatbot_cache: LRUCache,
+        chat_history: list,
         layer: str
 ) -> str:
     """
@@ -35,6 +36,7 @@ async def chatbot_entry_execution(
         chatbot_db_uri (str): Base MySQL connection URI (no trailing database name).
         chatbot_db_schemas (list): List of MySQL schema/database names to search for views.
         chatbot_cache (LRUCache): Cache for user specific data.
+        chat_history (list): Recent Q&A pairs from the same chat session for conversational context.
         layer (str): The processing layer determined by classification ('SQL' or 'RAG').
 
     Returns:
@@ -67,6 +69,7 @@ async def chatbot_entry_execution(
                 chatbot_db_uri,
                 chatbot_db_schemas,
                 chatbot_cache,
+                chat_history,
             )
             response = sql_agent_response.strip()
 
@@ -84,5 +87,6 @@ async def chatbot_entry_execution(
             return "I'm sorry, I couldn't find that information due to a database error."
 
     # Instead, it should use the RAG layer
-    answer = await rag_layer_agent(user_query, llm_4o, company_id=employee_metadata.company_id)
+    answer = await rag_layer_agent(user_query, llm_4o, company_id=employee_metadata.company_id, chat_history=chat_history)
     return answer
+

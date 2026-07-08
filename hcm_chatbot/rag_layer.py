@@ -86,7 +86,7 @@ def get_rag_chain(company_id: str, llm_4o: AzureChatOpenAI):
     return chain_cache[company_id]
 
 
-async def rag_layer_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id: str) -> str:
+async def rag_layer_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id: str, chat_history: list = None) -> str:
     """Processes a user query using a Retrieval-Augmented Generation (RAG) chain.
 
     This function retrieves or creates a cached RAG chain for the specified company ID
@@ -96,11 +96,28 @@ async def rag_layer_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id: 
         user_query (str): The input query from the user.
         llm_4o (AzureChatOpenAI): The language model used for generating responses.
         company_id (str): The unique identifier of the company.
+        chat_history (list): Recent Q&A pairs from the same chat session for conversational context.
 
     Returns:
         str: The generated response from the RAG chain.
 
     """
     rag_chain = get_rag_chain(company_id, llm_4o)  # Get cached chain
-    result = await rag_chain.ainvoke({"input": user_query})
+
+    # Prepend conversation history to the query for context
+    augmented_input = user_query
+    if chat_history:
+        history_lines = []
+        for pair in chat_history:
+            history_lines.append(f"User: {pair['question']}")
+            history_lines.append(f"Assistant: {pair['answer']}")
+        history_block = (
+            "--- CONVERSATION HISTORY ---\n"
+            + "\n".join(history_lines)
+            + "\n----------------------------\n"
+        )
+        augmented_input = f"{history_block}Current Question: {user_query}"
+
+    result = await rag_chain.ainvoke({"input": augmented_input})
     return result['answer']
+

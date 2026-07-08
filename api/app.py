@@ -120,6 +120,19 @@ async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
     response_id = str(uuid.uuid4())
 
     try:
+        # Fetch recent conversation history for context
+        chat_history = []
+        try:
+            chat_history = await async_client.fetch_recent_history(
+                chat_id=request_model.chat_id,
+                employee_id=request_model.employee_metadata.id,
+                company_id=request_model.employee_metadata.company_id,
+                limit=5
+            )
+            print(f"📜 Loaded {len(chat_history)} previous Q&A pairs for context")
+        except Exception as hist_err:
+            print(f"⚠️ Could not fetch chat history (continuing without): {hist_err}")
+
         # Generate chatbot response
         response = await chatbot_entry_execution(
             request_model.user_query,
@@ -128,6 +141,7 @@ async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
             CHATBOT_DB_BASE_URI,
             CHATBOT_DB_SCHEMAS,
             chatbot_cache,
+            chat_history,
         )
 
         current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
