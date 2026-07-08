@@ -173,6 +173,31 @@ class AsyncCosmosClient:
             grouped_results[key_value].append(doc)
         return dict(grouped_results)
 
+    async def fetch_recent_history(self, chat_id: str, employee_id: str, company_id: str, limit: int = 5) -> list:
+        """
+        Fetches the most recent Q&A pairs for a chat session to use as conversation context.
+
+        :param chat_id: The unique chat session identifier.
+        :param employee_id: The employee's unique identifier.
+        :param company_id: The company's unique identifier.
+        :param limit: Maximum number of recent Q&A pairs to return (default: 5).
+        :return: List of dicts with 'question' and 'answer' keys, in chronological order (oldest first).
+        """
+        query = {
+            "chat_id": chat_id,
+            "employee_metadata.id": employee_id,
+            "employee_metadata.company_id": company_id,
+        }
+        cursor = self.collection.find(
+            query,
+            {"_id": 0, "question": 1, "answer": 1, "timestamp": 1}
+        ).sort("_id", -1).limit(limit)
+
+        documents = await cursor.to_list(length=limit)
+        # Reverse to chronological order (oldest first) for natural conversation flow
+        documents.reverse()
+        return [{"question": doc.get("question", ""), "answer": doc.get("answer", "")} for doc in documents]
+
     async def add_to_buffer(self, document: dict):
         """
         Adds a document to the buffer for batch insertion.

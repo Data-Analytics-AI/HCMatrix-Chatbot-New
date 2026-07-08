@@ -141,7 +141,8 @@ async def sql_layer_agent(
         company_id: str, employee_id: str, query: str,
         llm_4O: AzureChatOpenAI, chatbot_db_uri: str,
         chatbot_db_schemas: List[str],
-        chatbot_cache: LRUCache) -> str:
+        chatbot_cache: LRUCache,
+        chat_history: list = None) -> str:
     """
     Executes a SQL query for an employee by retrieving or creating a compiled,
     cached AI-powered SQL agent executor.
@@ -271,12 +272,26 @@ async def sql_layer_agent(
     else:
         print(f"⚡ Cache HIT — Reusing fully compiled agent executor.")
 
+    # Build conversation history block if previous Q&A pairs exist
+    history_block = ""
+    if chat_history:
+        history_lines = []
+        for pair in chat_history:
+            history_lines.append(f"User: {pair['question']}")
+            history_lines.append(f"Assistant: {pair['answer']}")
+        history_block = (
+            "--- CONVERSATION HISTORY ---\n"
+            + "\n".join(history_lines)
+            + "\n----------------------------\n"
+        )
+
     # Wrap incoming queries with Context Blocks dynamically so the agent remains stateless and cacheable
     secure_input_wrapper = (
         f"--- SECURE CONTEXT ---\n"
         f"Current Company ID: {company_id}\n"
         f"Current Employee ID: {employee_id}\n"
         f"----------------------\n"
+        f"{history_block}"
         f"User Query: {query}"
     )
 
