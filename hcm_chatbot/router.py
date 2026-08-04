@@ -1,12 +1,12 @@
 from module.cache_service import LRUCache
 from langchain_openai import AzureChatOpenAI
 from api.schema import EmployeeMetadataSchema
-from api.schema import EmployeeMetadataSchema
-from hcm_chatbot.sql_layer import sql_layer_agent
+from hcm_chatbot.sql_layer import sql_layer_agent, _get_cached_engine
 from hcm_chatbot.rag_layer import rag_layer_agent
 from module.utils import timing_decorator
 from module.query_classifier import classify_query
 from module.security_guardrail import check_prompt_injection
+from module.rbac_service import resolve_rbac_context
 
 
 @timing_decorator
@@ -53,14 +53,23 @@ async def chatbot_entry_execution(
 
     if layer == 'SQL':
         try:
-            # 1. Run the Security Guardrail Analyzer
-            security_check = await check_prompt_injection(user_query, llm_4o)
+            # 1. Resolve RBAC context first — needed for both guardrail and SQL agent
+            engine = _get_cached_engine(chatbot_db_uri)
+            rbac_ctx = await resolve_rbac_context(
+                employee_metadata.company_id,
+                employee_metadata.id,
+                engine,
+            )
+            user_roles = rbac_ctx.role_names  # e.g. ['ADMIN', 'EMPLOYEE']
+
+            # 2. Run the Security Guardrail Analyzer (now RBAC-aware)
+            security_check = await check_prompt_injection(user_query, llm_4o, user_roles=user_roles)
             if not security_check.get("is_safe", False):
                 reason = security_check.get("reason", "Violates security policy.")
                 print(f"🚨 Security Block: {reason}")
                 return f"I'm sorry, I cannot process this request. Reason: {reason}"
 
-            # 2. Execute SQL Agent if safe
+            # 3. Execute SQL Agent if safe (pass pre-resolved RBAC context to avoid re-resolving)
             sql_agent_response = await sql_layer_agent(
                 employee_metadata.company_id,
                 employee_metadata.id,
@@ -70,6 +79,7 @@ async def chatbot_entry_execution(
                 chatbot_db_schemas,
                 chatbot_cache,
                 chat_history,
+                rbac_ctx=rbac_ctx,
             )
             response = sql_agent_response.strip()
 
@@ -89,4 +99,5 @@ async def chatbot_entry_execution(
     # Instead, it should use the RAG layer
     answer = await rag_layer_agent(user_query, llm_4o, company_id=employee_metadata.company_id, chat_history=chat_history)
     return answer
+
 

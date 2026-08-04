@@ -11,6 +11,9 @@ from module.cosmos_service import AsyncCosmosClient
 from hcm_chatbot.router import chatbot_entry_execution
 from api.schema import ChatInputSchema, ChatResponseSchema, AudioInput
 from module.spk import SpeechSynthesizerWrapper
+from module.rbac_models import RBACDiagnosticResponse, RBACInvalidateRequest
+from module.rbac_service import resolve_rbac_context, invalidate_rbac_cache, invalidate_all_rbac_cache
+from hcm_chatbot.sql_layer import _get_cached_engine
 from azure.cognitiveservices import speech as speechsdk
 
 # ===================== Initialize model and embeddings ====================
@@ -264,6 +267,59 @@ async def fetch_all_chat_id(
         "employee_metadata.company_id": company_id,
     }
     return await async_client.fetch_and_group_by_key(query)
+
+
+# ===================== RBAC Diagnostic & Invalidation =======================
+@app.get("/rbac-diagnostic", status_code=status.HTTP_200_OK, response_model=RBACDiagnosticResponse)
+async def rbac_diagnostic(
+        company_id: str = Query(..., description="Company ID to resolve RBAC for"),
+        employee_id: str = Query(..., description="Employee ID to resolve RBAC for"),
+) -> RBACDiagnosticResponse:
+    """Health-check endpoint that resolves RBAC for a given company/employee pair.
+
+    Returns the resolved roles, scope type, accessible employee/department counts,
+    salary visibility flag, and a sample of accessible employee IDs.
+    Does NOT invoke the AI agent.
+    """
+    try:
+        engine = _get_cached_engine(CHATBOT_DB_BASE_URI)
+        rbac_ctx = await resolve_rbac_context(company_id, employee_id, engine)
+        return RBACDiagnosticResponse(
+            company_id=rbac_ctx.company_id,
+            employee_id=rbac_ctx.employee_id,
+            roles=rbac_ctx.role_names,
+            scope_type=rbac_ctx.scope_type.value,
+            accessible_employee_count=len(rbac_ctx.accessible_employee_ids),
+            accessible_department_count=len(rbac_ctx.accessible_department_ids),
+            sample_employee_ids=rbac_ctx.accessible_employee_ids[:10],
+            can_view_salary=rbac_ctx.can_view_salary,
+            resolved_at=rbac_ctx.resolved_at,
+        )
+    except Exception as e:
+        print(f"❌ RBAC diagnostic error: {e}")
+        raise HTTPException(status_code=500, detail=f"RBAC resolution failed: {e}")
+
+
+@app.post("/rbac-invalidate", status_code=status.HTTP_200_OK)
+async def rbac_invalidate(request_body: RBACInvalidateRequest = None):
+    """Invalidates the RBAC cache for a specific company/employee or clears all.
+
+    Used after promotions, department head changes, or role changes to force
+    re-resolution on the next request.
+
+    - If both company_id and employee_id are provided: invalidates that specific entry.
+    - If neither is provided: clears the entire RBAC cache.
+    """
+    if request_body and request_body.company_id and request_body.employee_id:
+        removed = invalidate_rbac_cache(request_body.company_id, request_body.employee_id)
+        return {
+            "status": "invalidated" if removed else "not_found",
+            "company_id": request_body.company_id,
+            "employee_id": request_body.employee_id,
+        }
+    else:
+        invalidate_all_rbac_cache()
+        return {"status": "all_cleared"}
 
 
 @app.on_event("shutdown")
