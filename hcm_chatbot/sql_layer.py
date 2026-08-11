@@ -260,7 +260,7 @@ async def sql_layer_agent(
             prefix=system_prefix,
             extra_tools=[rbac_query_tool],
             verbose=True,
-            max_execution_time=60,
+            max_execution_time=120,
             handle_parsing_errors=True
         )
 

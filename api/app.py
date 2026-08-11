@@ -45,7 +45,7 @@ CHATBOT_DB_SCHEMAS: list[str] = (
     [s for s in _raw_schemas if s and not s.startswith('$')]  # drop unresolved placeholders
     or [db_creds['database']]
 )
-print(f"🔗 DB host (masked): {db_creds['host']}:{_port} | Schemas: {CHATBOT_DB_SCHEMAS}")
+print(f"DB host (masked): {db_creds['host']}:{_port} | Schemas: {CHATBOT_DB_SCHEMAS}")
 
 
 # Azure Speech Config
@@ -117,35 +117,50 @@ def home():
 async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
     """Processes user queries and returns chatbot responses."""
 
-    if not request_model.user_query.strip():
-        raise HTTPException(status_code=400, detail="User query cannot be empty")
+    user_query = request_model.user_query.strip()
+    
+    import re
+    is_spam = False
+    if not user_query:
+        is_spam = True
+    elif len(user_query) > 1000:
+        is_spam = True
+    elif not re.search(r'[a-zA-Z]', user_query):
+        is_spam = True
+    elif re.search(r'(.)\1{6,}', user_query):
+        is_spam = True
+    elif re.search(r'[^a-zA-Z0-9\s]{6,}', user_query):
+        is_spam = True
 
     response_id = str(uuid.uuid4())
 
     try:
-        # Fetch recent conversation history for context
-        chat_history = []
-        try:
-            chat_history = await async_client.fetch_recent_history(
-                chat_id=request_model.chat_id,
-                employee_id=request_model.employee_metadata.id,
-                company_id=request_model.employee_metadata.company_id,
-                limit=5
+        if is_spam:
+            response = "I did not understand that input. Please type a clear question."
+        else:
+            # Fetch recent conversation history for context
+            chat_history = []
+            try:
+                chat_history = await async_client.fetch_recent_history(
+                    chat_id=request_model.chat_id,
+                    employee_id=request_model.employee_metadata.id,
+                    company_id=request_model.employee_metadata.company_id,
+                    limit=5
+                )
+                print(f"Loaded {len(chat_history)} previous Q&A pairs for context")
+            except Exception as hist_err:
+                print(f"Could not fetch chat history (continuing without): {hist_err}")
+    
+            # Generate chatbot response
+            response = await chatbot_entry_execution(
+                request_model.user_query,
+                request_model.employee_metadata,
+                llm_4O,
+                CHATBOT_DB_BASE_URI,
+                CHATBOT_DB_SCHEMAS,
+                chatbot_cache,
+                chat_history,
             )
-            print(f"📜 Loaded {len(chat_history)} previous Q&A pairs for context")
-        except Exception as hist_err:
-            print(f"⚠️ Could not fetch chat history (continuing without): {hist_err}")
-
-        # Generate chatbot response
-        response = await chatbot_entry_execution(
-            request_model.user_query,
-            request_model.employee_metadata,
-            llm_4O,
-            CHATBOT_DB_BASE_URI,
-            CHATBOT_DB_SCHEMAS,
-            chatbot_cache,
-            chat_history,
-        )
 
         current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
