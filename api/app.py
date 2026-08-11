@@ -11,6 +11,9 @@ from module.cosmos_service import AsyncCosmosClient
 from hcm_chatbot.router import chatbot_entry_execution
 from api.schema import ChatInputSchema, ChatResponseSchema, AudioInput
 from module.spk import SpeechSynthesizerWrapper
+from module.rbac_models import RBACDiagnosticResponse, RBACInvalidateRequest
+from module.rbac_service import resolve_rbac_context, invalidate_rbac_cache, invalidate_all_rbac_cache
+from hcm_chatbot.sql_layer import _get_cached_engine
 from azure.cognitiveservices import speech as speechsdk
 
 # ===================== Initialize model and embeddings ====================
@@ -42,7 +45,7 @@ CHATBOT_DB_SCHEMAS: list[str] = (
     [s for s in _raw_schemas if s and not s.startswith('$')]  # drop unresolved placeholders
     or [db_creds['database']]
 )
-print(f"🔗 DB host (masked): {db_creds['host']}:{_port} | Schemas: {CHATBOT_DB_SCHEMAS}")
+print(f"DB host (masked): {db_creds['host']}:{_port} | Schemas: {CHATBOT_DB_SCHEMAS}")
 
 
 # Azure Speech Config
@@ -114,35 +117,50 @@ def home():
 async def chatbot(request_model: ChatInputSchema) -> ORJSONResponse:
     """Processes user queries and returns chatbot responses."""
 
-    if not request_model.user_query.strip():
-        raise HTTPException(status_code=400, detail="User query cannot be empty")
+    user_query = request_model.user_query.strip()
+    
+    import re
+    is_spam = False
+    if not user_query:
+        is_spam = True
+    elif len(user_query) > 1000:
+        is_spam = True
+    elif not re.search(r'[a-zA-Z]', user_query):
+        is_spam = True
+    elif re.search(r'(.)\1{6,}', user_query):
+        is_spam = True
+    elif re.search(r'[^a-zA-Z0-9\s]{6,}', user_query):
+        is_spam = True
 
     response_id = str(uuid.uuid4())
 
     try:
-        # Fetch recent conversation history for context
-        chat_history = []
-        try:
-            chat_history = await async_client.fetch_recent_history(
-                chat_id=request_model.chat_id,
-                employee_id=request_model.employee_metadata.id,
-                company_id=request_model.employee_metadata.company_id,
-                limit=5
+        if is_spam:
+            response = "I did not understand that input. Please type a clear question."
+        else:
+            # Fetch recent conversation history for context
+            chat_history = []
+            try:
+                chat_history = await async_client.fetch_recent_history(
+                    chat_id=request_model.chat_id,
+                    employee_id=request_model.employee_metadata.id,
+                    company_id=request_model.employee_metadata.company_id,
+                    limit=5
+                )
+                print(f"Loaded {len(chat_history)} previous Q&A pairs for context")
+            except Exception as hist_err:
+                print(f"Could not fetch chat history (continuing without): {hist_err}")
+    
+            # Generate chatbot response
+            response = await chatbot_entry_execution(
+                request_model.user_query,
+                request_model.employee_metadata,
+                llm_4O,
+                CHATBOT_DB_BASE_URI,
+                CHATBOT_DB_SCHEMAS,
+                chatbot_cache,
+                chat_history,
             )
-            print(f"📜 Loaded {len(chat_history)} previous Q&A pairs for context")
-        except Exception as hist_err:
-            print(f"⚠️ Could not fetch chat history (continuing without): {hist_err}")
-
-        # Generate chatbot response
-        response = await chatbot_entry_execution(
-            request_model.user_query,
-            request_model.employee_metadata,
-            llm_4O,
-            CHATBOT_DB_BASE_URI,
-            CHATBOT_DB_SCHEMAS,
-            chatbot_cache,
-            chat_history,
-        )
 
         current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
 
@@ -264,6 +282,59 @@ async def fetch_all_chat_id(
         "employee_metadata.company_id": company_id,
     }
     return await async_client.fetch_and_group_by_key(query)
+
+
+# ===================== RBAC Diagnostic & Invalidation =======================
+@app.get("/rbac-diagnostic", status_code=status.HTTP_200_OK, response_model=RBACDiagnosticResponse)
+async def rbac_diagnostic(
+        company_id: str = Query(..., description="Company ID to resolve RBAC for"),
+        employee_id: str = Query(..., description="Employee ID to resolve RBAC for"),
+) -> RBACDiagnosticResponse:
+    """Health-check endpoint that resolves RBAC for a given company/employee pair.
+
+    Returns the resolved roles, scope type, accessible employee/department counts,
+    salary visibility flag, and a sample of accessible employee IDs.
+    Does NOT invoke the AI agent.
+    """
+    try:
+        engine = _get_cached_engine(CHATBOT_DB_BASE_URI)
+        rbac_ctx = await resolve_rbac_context(company_id, employee_id, engine)
+        return RBACDiagnosticResponse(
+            company_id=rbac_ctx.company_id,
+            employee_id=rbac_ctx.employee_id,
+            roles=rbac_ctx.role_names,
+            scope_type=rbac_ctx.scope_type.value,
+            accessible_employee_count=len(rbac_ctx.accessible_employee_ids),
+            accessible_department_count=len(rbac_ctx.accessible_department_ids),
+            sample_employee_ids=rbac_ctx.accessible_employee_ids[:10],
+            can_view_salary=rbac_ctx.can_view_salary,
+            resolved_at=rbac_ctx.resolved_at,
+        )
+    except Exception as e:
+        print(f"❌ RBAC diagnostic error: {e}")
+        raise HTTPException(status_code=500, detail=f"RBAC resolution failed: {e}")
+
+
+@app.post("/rbac-invalidate", status_code=status.HTTP_200_OK)
+async def rbac_invalidate(request_body: RBACInvalidateRequest = None):
+    """Invalidates the RBAC cache for a specific company/employee or clears all.
+
+    Used after promotions, department head changes, or role changes to force
+    re-resolution on the next request.
+
+    - If both company_id and employee_id are provided: invalidates that specific entry.
+    - If neither is provided: clears the entire RBAC cache.
+    """
+    if request_body and request_body.company_id and request_body.employee_id:
+        removed = invalidate_rbac_cache(request_body.company_id, request_body.employee_id)
+        return {
+            "status": "invalidated" if removed else "not_found",
+            "company_id": request_body.company_id,
+            "employee_id": request_body.employee_id,
+        }
+    else:
+        invalidate_all_rbac_cache()
+        return {"status": "all_cleared"}
 
 
 @app.on_event("shutdown")
