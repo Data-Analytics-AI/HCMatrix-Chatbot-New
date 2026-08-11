@@ -38,6 +38,12 @@ production:
       - "hcmatrix-time-and-attendance-db"
       - "hcmatrix-utility-db"
 
+  rbac_config:
+    auth_schema: "hcmatrix-utility-db"         # Schema containing RBAC scope-resolution views
+    rbac_cache_ttl: 60                          # Seconds before RBAC context expires
+    rbac_cache_capacity: 500                    # Max cached RBAC contexts
+    large_department_threshold: 200             # Switch to department-based filtering above this
+
 
   mongo_database:
     connection_string: $MONGO-DB-CONNECTION-STRING

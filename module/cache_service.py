@@ -84,6 +84,25 @@ class LRUCache:
         if len(self.cache) > self.capacity:
             self.cache.popitem(last=False)  # Remove the least recently used item
     
+    def delete(self, key) -> bool:
+        """
+        Removes a specific key from the cache.
+        
+        Args:
+            key: The cache key to remove.
+        
+        Returns:
+            bool: True if the key was found and removed, False otherwise.
+        """
+        if key in self.cache:
+            del self.cache[key]
+            return True
+        return False
+    
+    def clear(self) -> None:
+        """Removes all entries from the cache."""
+        self.cache.clear()
+    
     def __repr__(self):
         """
         Returns a string representation of the cache, displaying the keys and their values.
