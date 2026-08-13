@@ -39,12 +39,22 @@ def build_secure_context(rbac_ctx: RBACContext, query: str, chat_history: list =
         lines.append(f"Accessible Department IDs: {dept_str}")
         emp_str = ", ".join(rbac_ctx.accessible_employee_ids)
         lines.append(f"Accessible Employee IDs: {emp_str}")
-    elif rbac_ctx.scope_type in (ScopeType.TEAM, ScopeType.DEPARTMENT):
+    elif rbac_ctx.scope_type == ScopeType.DEPARTMENT:
+        dept_str = ", ".join(rbac_ctx.accessible_department_ids)
+        lines.append(f"Accessible Department IDs: {dept_str}")
+        emp_str = ", ".join(rbac_ctx.accessible_employee_ids)
+        lines.append(f"Accessible Employee IDs: {emp_str}")
+    elif rbac_ctx.scope_type == ScopeType.TEAM:
         emp_str = ", ".join(rbac_ctx.accessible_employee_ids)
         lines.append(f"Accessible Employee IDs: {emp_str}")
     else:
         # SELF_ONLY
         lines.append(f"Accessible Employee IDs: {rbac_ctx.employee_id}")
+
+    # ── Department names (helps LLM correctly identify "my department") ──
+    if getattr(rbac_ctx, 'accessible_department_names', None):
+        dept_names_str = ", ".join(getattr(rbac_ctx, 'accessible_department_names', []))
+        lines.append(f"User's Department(s): {dept_names_str}")
 
     # ── Salary visibility ────────────────────────────────────────────────
     if rbac_ctx.can_view_salary:

@@ -28,7 +28,7 @@ class SpeechSynthesizerWrapper:
         self.connection = speechsdk.Connection.from_speech_synthesizer(self.synthesizer)
         self.connection.open(True)  # Keeps the connection open
         print(
-            f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] ✅ Connection opened and ready for synthesis."
+            f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Connection opened and ready for synthesis."
         )
 
         self.last_request_time = time.time()  # Track last synthesis request
