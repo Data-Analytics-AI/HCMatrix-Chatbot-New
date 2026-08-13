@@ -377,6 +377,7 @@ def _build_rbac_system_prompt() -> str:
         "v_employee_pay_structure, v_employee_loans, v_employee_loan_repayments.\n\n"
 
         "DEPARTMENT SUMMARY SCOPING (CRITICAL):\n"
+        
         "- v_department_summary: When the user's scope is department or department_large, you MUST filter "
         "by `departmentId IN ([Accessible Department IDs])` from the secure context.\n"
         "- NEVER return summaries for all departments. Only return data for the user's own department(s).\n"

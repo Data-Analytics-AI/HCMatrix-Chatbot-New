@@ -57,6 +57,7 @@ class RBACContext:
     scope_type: ScopeType = ScopeType.SELF_ONLY
     accessible_employee_ids: List[str] = field(default_factory=list)
     accessible_department_ids: List[str] = field(default_factory=list)
+    accessible_department_names: List[str] = field(default_factory=list)
     can_view_salary: bool = False
     resolved_at: float = field(default_factory=time.time)
 
