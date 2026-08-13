@@ -118,6 +118,7 @@ def _resolve_sync(
             company_id, employee_id, roles, conn
         )
         can_view_salary = _determine_salary_visibility(roles)
+        dept_names = _fetch_department_names(company_id, dept_ids, conn) if dept_ids else []
 
     return RBACContext(
         company_id=company_id,
@@ -126,6 +127,7 @@ def _resolve_sync(
         scope_type=scope_type,
         accessible_employee_ids=emp_ids,
         accessible_department_ids=dept_ids,
+        accessible_department_names=dept_names,
         can_view_salary=can_view_salary,
     )
 
@@ -263,7 +265,6 @@ def _resolve_scope(
                 "Scope: DEPARTMENT_LARGE for %s::%s (%d employees, %d departments)",
                 company_id, employee_id, len(emp_ids), len(dept_ids),
             )
-            
             return scope, emp_ids, dept_ids
         else:
             scope = ScopeType.DEPARTMENT
@@ -271,7 +272,6 @@ def _resolve_scope(
                 "Scope: DEPARTMENT for %s::%s (%d employees, %d departments)",
                 company_id, employee_id, len(emp_ids), len(dept_ids),
             )
-            print(emp_ids,"emp_ids")
             return scope, emp_ids, dept_ids
 
     # ── Line Manager → reporting tree ────────────────────────────────────
@@ -309,3 +309,36 @@ def _determine_salary_visibility(roles: Set[RBACRole]) -> bool:
     All other roles can only see their own salary (enforced in the prompt).
     """
     return RBACRole.ADMIN in roles
+
+
+# ─── Step 4: Fetch Department Names ─────────────────────────────────────────
+
+def _fetch_department_names(
+    company_id: str,
+    dept_ids: List[str],
+    conn,
+) -> List[str]:
+    """
+    Look up human-readable department names for the given department IDs.
+
+    Used to populate the secure context so the LLM knows which department(s)
+    the HOD belongs to (e.g. "Data Engineering & Analytics").
+    """
+    if not dept_ids:
+        return []
+
+    schema = _AUTH_SCHEMA
+    placeholders = ", ".join([f":d{i}" for i in range(len(dept_ids))])
+    query = text(
+        f"SELECT DISTINCT departmentName "
+        f"FROM `{schema}`.`v_public_departments` "
+        f"WHERE companyId = :cid AND departmentId IN ({placeholders})"
+    )
+    params = {"cid": company_id}
+    for i, did in enumerate(dept_ids):
+        params[f"d{i}"] = did
+
+    rows = conn.execute(query, params).fetchall()
+    names = [str(r[0]) for r in rows if r[0]]
+    logger.info("Resolved %d department name(s) for company %s: %s", len(names), company_id, names)
+    return names

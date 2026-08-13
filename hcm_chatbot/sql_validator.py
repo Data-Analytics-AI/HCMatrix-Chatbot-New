@@ -261,13 +261,13 @@ def validate_sql_query(sql: str, rbac_ctx: RBACContext) -> Optional[str]:
                 _sql_has_department_id_filter(sql)
                 or any(
                     name.lower() in sql.lower()
-                    for name in rbac_ctx.accessible_department_names
+                    for name in getattr(rbac_ctx, 'accessible_department_names', [])
                 )
             )
             if not has_dept_filter:
                 # Check if this is a company-wide aggregation
                 if re.search(r'\b(SUM|COUNT|AVG)\s*\(', sql, re.IGNORECASE):
-                    dept_names = ", ".join(rbac_ctx.accessible_department_names)
+                    dept_names = ", ".join(getattr(rbac_ctx, 'accessible_department_names', []))
                     return (
                         f"RBAC BLOCK: Company-wide aggregations on {', '.join(public_views_hit)} "
                         f"are not permitted for your scope. You only have access to: "
