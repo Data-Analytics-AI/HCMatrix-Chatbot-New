@@ -448,7 +448,11 @@ def _build_rbac_system_prompt() -> str:
         "- `hcmatrix-time-and-attendance-db`.`v_employee_latest_clock`: Most recent clock-in/clock-out events.\n\n"
 
         "Public Directory (companyId only, no employeeId filter):\n"
-        "- `hcmatrix-utility-db`.`v_public_employee_directory`: Non-confidential employee directory. Includes employee name, job title, department, email, and their team lead / reporting line (lineManagerName). Use this view to find anyone's manager instead of v_employee_profile to avoid RBAC blocks.\n"
+        "- `hcmatrix-utility-db`.`v_public_employee_directory`: Non-confidential employee directory. "
+        "Key columns: firstName, middleName, lastName, fullName, email, phoneNumber, gender, nationality, "
+        "designationName (this is the job title — there is NO 'jobTitle' column), departmentName, "
+        "employmentType, workModel, hireDate, status, lineManagerName, isDepartmentHead, isOwner. "
+        "Use this view to find anyone's manager instead of v_employee_profile to avoid RBAC blocks.\n"
         "- `hcmatrix-utility-db`.`v_public_departments`: Departments, hierarchies, headcount.\n\n"
 
         "Aggregated Manager / HOD Views (LINE_MANAGER, HOD, ADMIN only):\n"
@@ -461,6 +465,12 @@ def _build_rbac_system_prompt() -> str:
         # ── Query Guidance ───────────────────────────────────────────────
         "QUERY GUIDANCE:\n"
         "- IMPORTANT: Table names are schema-qualified. Always use backtick-quoting for both schema and table names since schema names contain hyphens.\n"
+        "- COMMON COLUMN NAME MISTAKES (NEVER make these — they cause errors and slow retries):\n"
+        "  * There is NO 'jobTitle' column anywhere. The correct column is `designationName`.\n"
+        "  * There is NO 'workEmail' column. The correct column is `email`.\n"
+        "  * There is NO 'salary' column in v_public_employee_directory. Salary data is in the payroll views only.\n"
+        "  * There is NO 'managerId' column in v_public_employee_directory. Use `lineManagerId` and `lineManagerName`.\n"
+        "  * ALWAYS use the exact column names from the schema. If unsure, inspect the view first.\n"
         "- First inspect the view columns if unsure of the schema before querying.\n"
         "- Use JOINs across views when a question spans multiple data areas.\n"
         "- Write efficient queries targeting only the specified views.\n"
