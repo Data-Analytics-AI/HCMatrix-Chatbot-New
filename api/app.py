@@ -4,6 +4,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 import uuid
 import time
+import logging
+
+# Suppress health-check log noise
+class _HealthFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return '"GET /health' not in msg and '"GET /healthz' not in msg
+
+logging.getLogger("uvicorn.access").addFilter(_HealthFilter())
+
 from module.azure_oai import AzureOAI
 from module.cache_service import LRUCache
 from module.utils import config
@@ -110,6 +120,11 @@ def home():
     return {
         "status": "HCMatrix Chatbot is up! Endpoints are `/chat`, `/audio`, `/chat-history` and `all-chat-history`."
     }
+
+@app.get("/health", status_code=status.HTTP_200_OK, include_in_schema=False)
+def health_check():
+    """Lightweight health endpoint for K8s probes. No logging."""
+    return {"status": "ok"}
 
 
 # ===================== Chatbot API (Text Response Only) =======================

@@ -40,16 +40,16 @@ spec:
               memory: "750Mi"
           livenessProbe:
             httpGet:
-              path: / # Ensure this path is a valid health check endpoint in your app
+              path: /health # Dedicated silent health check endpoint
               port: 5000
             initialDelaySeconds: 15 # Increased slightly
             periodSeconds: 10
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: / # Ensure this path is a valid health check endpoint in your app
+              path: /health # Dedicated silent health check endpoint
               port: 5000
-            initialDelaySeconds: 10 # Increased slightly
+            initialDelaySeconds: 30 # Increased slightly
             periodSeconds: 5
             failureThreshold: 3
           env:
