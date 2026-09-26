@@ -43,6 +43,14 @@ DEPARTMENT_SCOPED_VIEWS = {
     "v_department_summary",
 }
 
+# Aggregated views for managers and HODs (scoped by managerId or departmentId / employeeId)
+TEAM_SCOPED_VIEWS = {
+    "v_team_headcount",
+    "v_team_leave_summary",
+    "v_team_attendance_summary",
+    "v_team_asset_summary",
+}
+
 # All views that contain employee-scoped data (require employeeId filtering)
 EMPLOYEE_SCOPED_VIEWS = {
     "v_employee_profile", "v_employee_emergency_contacts", "v_employee_education",
@@ -53,8 +61,6 @@ EMPLOYEE_SCOPED_VIEWS = {
     "v_employee_loan_requests", "v_employee_loan_repayments",
     "v_employee_assets", "v_employee_vehicles",
     "v_employee_daily_attendance", "v_employee_latest_clock",
-    "v_team_headcount", "v_team_leave_summary", "v_team_attendance_summary",
-    "v_team_asset_summary",
 }
 
 # Salary aggregate functions that should be blocked when salary is restricted
@@ -76,31 +82,55 @@ def _extract_tables_from_sql(sql: str) -> Set[str]:
 
     Handles backtick-quoted schema.table patterns like:
         `hcmatrix-utility-db`.`v_employee_profile`
+    as well as unquoted or partially-quoted schema.table:
+        `hcmatrix-utility-db`.v_employee_profile
+        hcmatrix-utility-db.v_employee_profile
+        v_employee_profile
     """
-    # Match `schema`.`table` patterns
-    schema_table = re.findall(r'`[^`]+`\.`([^`]+)`', sql)
+    tables = set()
 
-    # Match plain table names after FROM/JOIN keywords
-    plain_table = re.findall(
-        r'(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)',
-        sql, re.IGNORECASE,
-    )
+    # 1. `schema`.`table`
+    tables.update(re.findall(r'`[^`]+`\.`([^`]+)`', sql))
 
-    return set(schema_table + plain_table)
+    # 2. `schema`.table
+    tables.update(re.findall(r'`[^`]+`\.([a-zA-Z_][a-zA-Z0-9_]*)', sql))
+
+    # 3. schema.`table`
+    tables.update(re.findall(r'[\w\-]+\.`([^`]+)`', sql))
+
+    # 4. schema.table (where schema can contain hyphens)
+    tables.update(re.findall(r'(?:FROM|JOIN)\s+[\w\-]+\.([a-zA-Z_][a-zA-Z0-9_]*)', sql, re.IGNORECASE))
+
+    # 5. `table`
+    tables.update(re.findall(r'(?:FROM|JOIN)\s+`([a-zA-Z_][a-zA-Z0-9_]*)`', sql, re.IGNORECASE))
+
+    # 6. plain table (without schema)
+    plain = re.findall(r'(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)(?:\s|$|,|;)', sql, re.IGNORECASE)
+    tables.update(plain)
+
+    return tables
 
 
 def _sql_has_employee_id_filter(sql: str) -> bool:
-    """Check if the SQL contains an employeeId filter (IN or =)."""
+    """Check if the SQL contains an employeeId filter (IN or =), supporting optional backticks."""
     return bool(re.search(
-        r'employeeId\s*(IN\s*\(|=\s*)',
+        r'[`"]?employeeId[`"]?\s*(IN\s*\(|=\s*)',
+        sql, re.IGNORECASE,
+    ))
+
+
+def _sql_has_manager_id_filter(sql: str) -> bool:
+    """Check if the SQL contains a managerId filter (IN or =), supporting optional backticks."""
+    return bool(re.search(
+        r'[`"]?managerId[`"]?\s*(IN\s*\(|=\s*)',
         sql, re.IGNORECASE,
     ))
 
 
 def _sql_has_department_id_filter(sql: str) -> bool:
-    """Check if the SQL contains a departmentId filter (IN or =)."""
+    """Check if the SQL contains a departmentId filter (IN or =), supporting optional backticks."""
     return bool(re.search(
-        r'departmentId\s*(IN\s*\(|=\s*)',
+        r'[`"]?departmentId[`"]?\s*(IN\s*\(|=\s*)',
         sql, re.IGNORECASE,
     ))
 
@@ -116,7 +146,7 @@ def _extract_employee_ids_from_sql(sql: str) -> Set[str]:
 
     # Match employeeId IN (1, 2, 3, ...)
     in_match = re.search(
-        r'employeeId\s+IN\s*\(([^)]+)\)',
+        r'[`"]?employeeId[`"]?\s+IN\s*\(([^)]+)\)',
         sql, re.IGNORECASE,
     )
     if in_match:
@@ -127,7 +157,59 @@ def _extract_employee_ids_from_sql(sql: str) -> Set[str]:
 
     # Match employeeId = 116 or employeeId = '116'
     eq_match = re.findall(
-        r"employeeId\s*=\s*'?(\d+)'?",
+        r"[`\"]?employeeId[`\"]?\s*=\s*'?(\d+)'?",
+        sql, re.IGNORECASE,
+    )
+    ids.update(eq_match)
+
+    return ids
+
+
+def _extract_manager_ids_from_sql(sql: str) -> Set[str]:
+    """
+    Extract managerId values from IN(...) or = clauses in the SQL.
+    """
+    ids = set()
+
+    # Match managerId IN (1, 2, 3, ...)
+    in_match = re.search(
+        r'[`"]?managerId[`"]?\s+IN\s*\(([^)]+)\)',
+        sql, re.IGNORECASE,
+    )
+    if in_match:
+        raw = in_match.group(1)
+        ids.update(re.findall(r"'([^']+)'", raw))
+        ids.update(re.findall(r'\b(\d+)\b', raw))
+
+    # Match managerId = 116 or managerId = '116'
+    eq_match = re.findall(
+        r"[`\"]?managerId[`\"]?\s*=\s*'?(\d+)'?",
+        sql, re.IGNORECASE,
+    )
+    ids.update(eq_match)
+
+    return ids
+
+
+def _extract_department_ids_from_sql(sql: str) -> Set[str]:
+    """
+    Extract departmentId values from IN(...) or = clauses in the SQL.
+    """
+    ids = set()
+
+    # Match departmentId IN (1, 2, 3, ...)
+    in_match = re.search(
+        r'[`"]?departmentId[`"]?\s+IN\s*\(([^)]+)\)',
+        sql, re.IGNORECASE,
+    )
+    if in_match:
+        raw = in_match.group(1)
+        ids.update(re.findall(r"'([^']+)'", raw))
+        ids.update(re.findall(r'\b(\d+)\b', raw))
+
+    # Match departmentId = 6 or departmentId = '6'
+    eq_match = re.findall(
+        r"[`\"]?departmentId[`\"]?\s*=\s*'?(\d+)'?",
         sql, re.IGNORECASE,
     )
     ids.update(eq_match)
@@ -222,6 +304,102 @@ def validate_sql_query(sql: str, rbac_ctx: RBACContext) -> Optional[str]:
                 "These are only available to HOD and Admin roles."
             )
 
+    # ── 3b. Team-scoped aggregated views (v_team_*) ──────────────────────
+    team_views_hit = tables & TEAM_SCOPED_VIEWS
+    if team_views_hit:
+        # Check role permission: only LINE_MANAGER, HOD, and ADMIN can access
+        if not (rbac_ctx.is_line_manager or rbac_ctx.is_hod or rbac_ctx.is_admin):
+            return (
+                "RBAC BLOCK: You do not have access to team summary views. "
+                "These are only available to Line Managers, HODs, and Admins."
+            )
+
+        # Allowed IDs for managers: their own ID + accessible employee IDs
+        allowed_manager_ids = {str(rbac_ctx.employee_id)} | set(str(eid) for eid in rbac_ctx.accessible_employee_ids)
+        allowed_emp_ids = allowed_manager_ids
+        allowed_dept_ids = set(str(did) for did in rbac_ctx.accessible_department_ids)
+
+        if "v_team_headcount" in team_views_hit:
+            # v_team_headcount has managerId and departmentId (NO employeeId column)
+            has_mgr_filter = _sql_has_manager_id_filter(sql)
+            has_dept_filter = _sql_has_department_id_filter(sql)
+
+            if not has_mgr_filter and not has_dept_filter:
+                own_id = str(rbac_ctx.employee_id)
+                return (
+                    f"RBAC BLOCK: Queries on v_team_headcount must include a managerId or departmentId filter. "
+                    f"To view your own team headcount, add: WHERE managerId = {own_id}"
+                )
+
+            if has_mgr_filter:
+                extracted_mgr_ids = _extract_manager_ids_from_sql(sql)
+                if extracted_mgr_ids:
+                    unauthorized_mgrs = extracted_mgr_ids - allowed_manager_ids
+                    if unauthorized_mgrs:
+                        return (
+                            f"RBAC BLOCK: Your query references manager IDs that are outside your access scope: "
+                            f"{', '.join(sorted(unauthorized_mgrs))}. You may only query your own team or subordinate managers."
+                        )
+
+            if has_dept_filter:
+                # departmentId filter is valid for HOD scope
+                if rbac_ctx.scope_type in (ScopeType.DEPARTMENT, ScopeType.DEPARTMENT_LARGE) or rbac_ctx.is_hod:
+                    extracted_dept_ids = _extract_department_ids_from_sql(sql)
+                    if extracted_dept_ids and allowed_dept_ids:
+                        unauthorized_depts = extracted_dept_ids - allowed_dept_ids
+                        if unauthorized_depts:
+                            return (
+                                f"RBAC BLOCK: Your query references department IDs outside your access scope: "
+                                f"{', '.join(sorted(unauthorized_depts))}."
+                            )
+                else:
+                    return (
+                        "RBAC BLOCK: Department-level filtering is only available to HOD and Admin roles. "
+                        f"Please filter by managerId = {rbac_ctx.employee_id}."
+                    )
+
+        # For sister team views (v_team_leave_summary, v_team_attendance_summary, v_team_asset_summary)
+        other_team_views = team_views_hit - {"v_team_headcount"}
+        if other_team_views:
+            has_mgr_filter = _sql_has_manager_id_filter(sql)
+            has_emp_filter = _sql_has_employee_id_filter(sql)
+            has_dept_filter = False
+            if rbac_ctx.is_hod:
+                has_dept_filter = (
+                    _sql_has_department_id_filter(sql)
+                    or any(
+                        name.lower() in sql.lower()
+                        for name in getattr(rbac_ctx, 'accessible_department_names', [])
+                    )
+                )
+
+            if not has_mgr_filter and not has_emp_filter and not has_dept_filter:
+                own_id = str(rbac_ctx.employee_id)
+                return (
+                    f"RBAC BLOCK: Queries on {', '.join(sorted(other_team_views))} must include a managerId or employeeId filter "
+                    f"for your team. Add: WHERE managerId = {own_id} or filter by specific employee IDs."
+                )
+
+            if has_mgr_filter:
+                extracted_mgr_ids = _extract_manager_ids_from_sql(sql)
+                if extracted_mgr_ids:
+                    unauthorized_mgrs = extracted_mgr_ids - allowed_manager_ids
+                    if unauthorized_mgrs:
+                        return (
+                            f"RBAC BLOCK: Your query references manager IDs that are outside your access scope: "
+                            f"{', '.join(sorted(unauthorized_mgrs))}."
+                        )
+
+            if has_emp_filter:
+                extracted_emp_ids = _extract_employee_ids_from_sql(sql)
+                if extracted_emp_ids:
+                    unauthorized_emps = extracted_emp_ids - allowed_emp_ids
+                    if unauthorized_emps:
+                        return (
+                            f"RBAC BLOCK: Your query references employee IDs that are outside your access scope: "
+                            f"{', '.join(sorted(unauthorized_emps))}."
+                        )
+
     # ── 4. Employee-scoped views — enforce employeeId filter ─────────────
     employee_views_hit = tables & EMPLOYEE_SCOPED_VIEWS
     if employee_views_hit:
@@ -251,35 +429,47 @@ def validate_sql_query(sql: str, rbac_ctx: RBACContext) -> Optional[str]:
     # ── 5. Public views — enforce department scoping for non-admin ────────
     public_views_hit = tables & PUBLIC_VIEWS - {"holidays", "v_employee_hmo_hospitals"}
     if public_views_hit:
-        # For public directory/department views, HOD/team/self should be
-        # limited to their department scope. We check if there's a department
-        # filter present.
-        if rbac_ctx.scope_type in (ScopeType.DEPARTMENT, ScopeType.DEPARTMENT_LARGE):
-            # HOD can view their department subtree — check for dept filter
-            # We allow it if they have a department name or ID filter
-            has_dept_filter = (
-                _sql_has_department_id_filter(sql)
-                or any(
-                    name.lower() in sql.lower()
-                    for name in getattr(rbac_ctx, 'accessible_department_names', [])
-                )
+        # Check if the query is already scoped to authorized entities
+        # (by department, by manager, or by authorized employee IDs)
+        has_dept_filter = (
+            _sql_has_department_id_filter(sql)
+            or any(
+                name.lower() in sql.lower()
+                for name in getattr(rbac_ctx, 'accessible_department_names', [])
             )
-            if not has_dept_filter:
-                # Check if this is a company-wide aggregation
-                if re.search(r'\b(SUM|COUNT|AVG)\s*\(', sql, re.IGNORECASE):
+        )
+        has_mgr_filter = _sql_has_manager_id_filter(sql)
+
+        # Check if query is scoped by authorized employee IDs (or joins an employee-scoped view)
+        has_emp_filter = False
+        if _sql_has_employee_id_filter(sql):
+            extracted_ids = _extract_employee_ids_from_sql(sql)
+            allowed_ids = set(str(eid) for eid in rbac_ctx.accessible_employee_ids)
+            if extracted_ids and (extracted_ids <= allowed_ids):
+                has_emp_filter = True
+            elif bool(tables & EMPLOYEE_SCOPED_VIEWS):
+                # Section 4 already verified employeeId for employee-scoped views
+                has_emp_filter = True
+        elif bool(tables & EMPLOYEE_SCOPED_VIEWS):
+            has_emp_filter = True
+
+        has_scope_filter = has_dept_filter or has_mgr_filter or has_emp_filter
+
+        if not has_scope_filter:
+            # Check if this is an un-scoped company-wide aggregation
+            if re.search(r'\b(SUM|COUNT|AVG)\s*\(', sql, re.IGNORECASE):
+                if rbac_ctx.scope_type in (ScopeType.DEPARTMENT, ScopeType.DEPARTMENT_LARGE):
                     dept_names = ", ".join(getattr(rbac_ctx, 'accessible_department_names', []))
                     return (
                         f"RBAC BLOCK: Company-wide aggregations on {', '.join(public_views_hit)} "
                         f"are not permitted for your scope. You only have access to: "
                         f"{dept_names}. Please filter by your department(s)."
                     )
-        elif rbac_ctx.scope_type in (ScopeType.TEAM, ScopeType.SELF_ONLY):
-            # Team/self scopes should not get company-wide directory aggregations
-            if re.search(r'\b(SUM|COUNT|AVG)\s*\(', sql, re.IGNORECASE):
-                return (
-                    "RBAC BLOCK: Company-wide aggregations are not permitted for your "
-                    "access scope. You may only view information within your team."
-                )
+                elif rbac_ctx.scope_type in (ScopeType.TEAM, ScopeType.SELF_ONLY):
+                    return (
+                        "RBAC BLOCK: Company-wide aggregations are not permitted for your "
+                        "access scope. You may only view information within your team."
+                    )
 
     # ── All checks passed ────────────────────────────────────────────────
     return None

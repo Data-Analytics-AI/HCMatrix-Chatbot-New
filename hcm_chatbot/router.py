@@ -4,7 +4,7 @@ from api.schema import EmployeeMetadataSchema
 from hcm_chatbot.sql_layer import sql_layer_agent, _get_cached_engine
 from hcm_chatbot.rag_layer import rag_layer_agent
 from module.utils import timing_decorator
-from module.query_classifier import classify_query
+from module.query_classifier import classify_query, OUT_OF_SCOPE_RESPONSE
 from module.security_guardrail import check_prompt_injection
 from module.rbac_service import resolve_rbac_context
 
@@ -50,6 +50,9 @@ async def chatbot_entry_execution(
         "agent stopped due to iteration limit or time limit",
         "agent stopped due to max iterations",
     ]
+
+    if layer == 'OUT_OF_SCOPE':
+        return OUT_OF_SCOPE_RESPONSE
 
     if layer == 'SQL':
         try:

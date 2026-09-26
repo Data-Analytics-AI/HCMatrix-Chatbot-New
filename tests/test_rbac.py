@@ -18,7 +18,7 @@ import types
 import asyncio
 import time
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch, PropertyMock, AsyncMock
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Bootstrap: mock heavy external dependencies so the RBAC modules can import
@@ -43,6 +43,9 @@ for mod in [
 # Other optional deps that may not be installed locally
 for mod in [
     "langchain_openai", "langchain_community",
+    "langchain_community.tools",
+    "langchain_community.tools.sql_database",
+    "langchain_community.tools.sql_database.tool",
     "langchain_community.utilities", "langchain_community.agent_toolkits",
     "langchain_community.agent_toolkits.sql",
     "langchain_community.agent_toolkits.sql.toolkit",
@@ -70,7 +73,14 @@ _fake_config = {
             "schemas": ["hcmatrix-utility-db"],
         },
         "speech_service": {"key": "fake"},
-        "azure_oai_credentials": {},
+        "azure_oai_credentials": {
+            "AZURE_OPENAI_API_KEY": "fake_key",
+            "AZURE_OPENAI_ENDPOINT": "https://fake.openai.azure.com/",
+            "4O_API_VERSION": "2024-12-01-preview",
+            "4O_AZURE_DEPLOYMENT": "fake_deployment",
+            "4O_MODEL_NAME": "fake_model",
+            "4O_MODEL_VERSION": "fake_version",
+        },
         "layer_one_agent_prompt": "test",
         "adls_credentials": {
             "client_id": "fake",
@@ -98,6 +108,7 @@ from module.rbac_models import RBACRole, ScopeType, RBACContext
 from module.rbac_models import RBACDiagnosticResponse, RBACInvalidateRequest
 from module.cache_service import LRUCache
 from hcm_chatbot.secure_context import build_secure_context
+from hcm_chatbot.sql_validator import validate_sql_query
 from module.rbac_service import (
     _detect_roles,
     _resolve_scope,
@@ -603,6 +614,18 @@ class TestResolveScope:
             result_mock.fetchall.return_value = rows
             results.append(result_mock)
         conn.execute.side_effect = results
+
+        # Mock raw connection for stored procedure sp_accessible_employees
+        if len(query_results) > 1:
+            sp_rows = query_results[1]
+            proc_tuples = [(0, r[0]) if len(r) == 1 else r for r in sp_rows]
+            stored_res = MagicMock()
+            stored_res.fetchall.return_value = proc_tuples
+            cursor = MagicMock()
+            cursor.fetchone.return_value = ["test_db"]
+            cursor.stored_results.return_value = [stored_res]
+            conn.connection.cursor.return_value = cursor
+
         return conn
 
     def test_admin_gets_company_scope(self):
@@ -1077,5 +1100,242 @@ class TestEdgeCases:
         assert len(roles) == 2
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# 8. Team Views & Headcount RBAC Tests
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestTeamViewsRBAC:
+    """Tests for RBAC enforcement on v_team_* views."""
+
+    def setup_method(self):
+        self.lm_hod_ctx = RBACContext(
+            company_id="1",
+            employee_id="116",
+            roles={RBACRole.EMPLOYEE, RBACRole.LINE_MANAGER, RBACRole.HOD},
+            scope_type=ScopeType.DEPARTMENT,
+            accessible_employee_ids=["116", "136", "159", "163"],
+            accessible_department_ids=["6"],
+            accessible_department_names=["Engineering"],
+        )
+        self.emp_ctx = RBACContext(
+            company_id="1",
+            employee_id="1221",
+            roles={RBACRole.EMPLOYEE},
+            scope_type=ScopeType.SELF_ONLY,
+            accessible_employee_ids=["1221"],
+            accessible_department_ids=["6"],
+            accessible_department_names=["Engineering"],
+        )
+        self.admin_ctx = RBACContext(
+            company_id="1",
+            employee_id="1",
+            roles={RBACRole.ADMIN},
+            scope_type=ScopeType.COMPANY,
+            can_view_salary=True,
+        )
+
+    def test_line_manager_queries_team_headcount_valid(self):
+        q = (
+            "SELECT managerId, managerName, directReports, totalSubtree "
+            "FROM `hcmatrix-utility-db`.`v_team_headcount` "
+            "WHERE companyId = 1 AND managerId = 116;"
+        )
+        assert validate_sql_query(q, self.lm_hod_ctx) is None
+
+    def test_line_manager_queries_team_headcount_unfiltered_blocked(self):
+        q = (
+            "SELECT managerId, managerName, directReports, totalSubtree "
+            "FROM `hcmatrix-utility-db`.`v_team_headcount` "
+            "WHERE companyId = 1;"
+        )
+        err = validate_sql_query(q, self.lm_hod_ctx)
+        assert err is not None
+        assert "managerId" in err
+        assert "WHERE managerId = 116" in err
+
+    def test_line_manager_queries_team_headcount_unauthorized_manager_blocked(self):
+        q = (
+            "SELECT * FROM `hcmatrix-utility-db`.`v_team_headcount` "
+            "WHERE companyId = 1 AND managerId = 9999;"
+        )
+        err = validate_sql_query(q, self.lm_hod_ctx)
+        assert err is not None
+        assert "outside your access scope" in err
+
+    def test_hod_queries_team_headcount_by_department(self):
+        q = (
+            "SELECT * FROM `hcmatrix-utility-db`.`v_team_headcount` "
+            "WHERE companyId = 1 AND departmentId = 6;"
+        )
+        assert validate_sql_query(q, self.lm_hod_ctx) is None
+
+    def test_line_manager_queries_team_attendance_summary_with_manager_id(self):
+        q = (
+            "SELECT * FROM `hcmatrix-utility-db`.`v_team_attendance_summary` "
+            "WHERE companyId = 1 AND managerId = 116 AND attendanceMonth = 9;"
+        )
+        assert validate_sql_query(q, self.lm_hod_ctx) is None
+
+    def test_pure_employee_blocked_from_team_views(self):
+        q = (
+            "SELECT * FROM `hcmatrix-utility-db`.`v_team_headcount` "
+            "WHERE companyId = 1 AND managerId = 1221;"
+        )
+        err = validate_sql_query(q, self.emp_ctx)
+        assert err is not None
+        assert "team summary views" in err
+
+    def test_admin_full_access_to_team_headcount(self):
+        q = (
+            "SELECT managerId, managerName, directReports, totalSubtree "
+            "FROM `hcmatrix-utility-db`.`v_team_headcount` "
+            "WHERE companyId = 1;"
+        )
+        assert validate_sql_query(q, self.admin_ctx) is None
+
+    def test_employee_can_query_public_departments_employee_count(self):
+        q = (
+            "SELECT departmentName, employeeCount "
+            "FROM `hcmatrix-utility-db`.`v_public_departments` "
+            "WHERE companyId = 1 AND departmentName LIKE '%Engineering%';"
+        )
+        assert validate_sql_query(q, self.emp_ctx) is None
+
+    def test_team_attendance_aggregation_joined_with_public_directory_allowed(self):
+        q = (
+            "SELECT e.employeeId, d.fullName, e.totalWorkedHours "
+            "FROM ( "
+            "  SELECT employeeId, SUM(workedHours) AS totalWorkedHours "
+            "  FROM `hcmatrix-time-and-attendance-db`.`v_employee_daily_attendance` "
+            "  WHERE companyId = 1 AND employeeId IN (116, 136, 159, 163) "
+            "  GROUP BY employeeId "
+            ") e "
+            "JOIN `hcmatrix-utility-db`.`v_public_employee_directory` d "
+            "  ON d.companyId = 1 AND d.employeeId = e.employeeId "
+            "ORDER BY e.totalWorkedHours ASC LIMIT 5;"
+        )
+        assert validate_sql_query(q, self.lm_hod_ctx) is None
+
+    def test_unscoped_company_wide_aggregation_blocked(self):
+        q = (
+            "SELECT COUNT(*) "
+            "FROM `hcmatrix-utility-db`.`v_public_employee_directory` "
+            "WHERE companyId = 1;"
+        )
+        err = validate_sql_query(q, self.lm_hod_ctx)
+        assert err is not None
+        assert "Company-wide aggregations" in err
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 9. Out-of-Scope & Token-Saving Early-Exit Tests
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TestOutOfScopeRouting:
+    """Tests for out-of-scope query classification and early-exit refusal."""
+
+    def test_out_of_scope_constant_value(self):
+        from module.query_classifier import OUT_OF_SCOPE_RESPONSE
+        assert OUT_OF_SCOPE_RESPONSE == "sorry i can only provide answers to question relating to HR related questions only"
+
+    def test_classifier_early_exits_on_out_of_scope(self):
+        from module.query_classifier import classify_query, OUT_OF_SCOPE_RESPONSE
+        import module.query_classifier as qc
+
+        # Mock the LLM returning OUT_OF_SCOPE category
+        mock_response = MagicMock()
+        mock_response.content = '{"category": "OUT_OF_SCOPE"}'
+        qc.model.ainvoke = AsyncMock(return_value=mock_response)
+
+        underlying_called = False
+
+        @classify_query
+        async def dummy_entry(user_query, layer=""):
+            nonlocal underlying_called
+            underlying_called = True
+            return "Should not reach here"
+
+        result = _run_async(dummy_entry("How do I make a chocolate cake?"))
+        assert result == OUT_OF_SCOPE_RESPONSE
+        assert underlying_called is False  # Confirms complete early exit without downstream execution
+
+    def test_classifier_routes_sql_to_underlying_function(self):
+        from module.query_classifier import classify_query
+        import module.query_classifier as qc
+
+        mock_response = MagicMock()
+        mock_response.content = '{"category": "SQL"}'
+        qc.model.ainvoke = AsyncMock(return_value=mock_response)
+
+        @classify_query
+        async def dummy_entry(user_query, layer=""):
+            return f"Processed in {layer}"
+
+        result = _run_async(dummy_entry("What is my salary?"))
+        assert result == "Processed in SQL"
+
+    def test_classifier_routes_rag_to_underlying_function(self):
+        from module.query_classifier import classify_query
+        import module.query_classifier as qc
+
+        mock_response = MagicMock()
+        mock_response.content = '{"category": "RAG"}'
+        qc.model.ainvoke = AsyncMock(return_value=mock_response)
+
+        @classify_query
+        async def dummy_entry(user_query, layer=""):
+            return f"Processed in {layer}"
+
+        result = _run_async(dummy_entry("What is the dress code policy?"))
+        assert result == "Processed in RAG"
+
+    def test_classifier_includes_chat_history_for_follow_up(self):
+        from module.query_classifier import classify_query
+        import module.query_classifier as qc
+
+        captured_messages = []
+
+        async def fake_ainvoke(messages):
+            captured_messages.extend(messages)
+            mock_resp = MagicMock()
+            mock_resp.content = '{"category": "SQL"}'
+            return mock_resp
+
+        qc.model.ainvoke = fake_ainvoke
+
+        @classify_query
+        async def dummy_entry(user_query, *args, layer="", **kwargs):
+            return f"Processed: {layer}"
+
+        history = [
+            {"question": "What is the total headcount of my team?", "answer": "Total headcount is 23."}
+        ]
+
+        result = _run_async(dummy_entry("provide the names?", chat_history=history))
+        assert result == "Processed: SQL"
+
+        # Check that chat history was actually included in the prompt to the classifier
+        human_msg = [m for m in captured_messages if m.__class__.__name__ == 'HumanMessage']
+        assert len(human_msg) == 1
+        assert "What is the total headcount of my team?" in human_msg[0].content
+        assert "provide the names?" in human_msg[0].content
+
+    def test_classifier_routes_microphone_question_to_rag(self):
+        from module.query_classifier import classify_query
+        import module.query_classifier as qc
+
+        mock_resp = MagicMock()
+        mock_resp.content = '{"category": "RAG"}'
+        qc.model.ainvoke = AsyncMock(return_value=mock_resp)
+
+        @classify_query
+        async def dummy_entry(user_query, layer=""):
+            return f"Processed in {layer}"
+
+        result = _run_async(dummy_entry("How does the microphone feature work on the chatbot?"))
+        assert result == "Processed in RAG"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
+
