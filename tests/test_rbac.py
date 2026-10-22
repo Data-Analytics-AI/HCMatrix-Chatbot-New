@@ -933,6 +933,13 @@ class TestRBACSystemPrompt:
         assert "v_employee_emergency_contacts" in self.prompt
         assert "v_employee_hmo_dependents" in self.prompt
         assert "v_employee_pay_structure" in self.prompt
+        assert "Emergency contacts are strictly restricted to ADMIN and the employee themselves" in self.prompt
+
+    def test_security_guardrail_emergency_contact_rule(self):
+        from module.security_guardrail import SecurityGuardrail
+        from unittest.mock import MagicMock
+        guardrail = SecurityGuardrail(MagicMock())
+        assert "Emergency contacts are strictly restricted to ADMIN and the employee themselves. If a LINE_MANAGER or HOD asks for another employee's emergency contact, block it consistently." in guardrail.system_prompt.content
 
     def test_contains_aggregated_views(self):
         assert "v_team_headcount" in self.prompt
@@ -940,6 +947,10 @@ class TestRBACSystemPrompt:
         assert "v_team_attendance_summary" in self.prompt
         assert "v_team_asset_summary" in self.prompt
         assert "v_department_summary" in self.prompt
+
+    def test_contains_active_employees_filtering(self):
+        assert "ACTIVE EMPLOYEES FILTERING" in self.prompt
+        assert "status != 'terminated'" in self.prompt
 
     def test_contains_public_directory_exceptions(self):
         assert "v_public_employee_directory" in self.prompt
@@ -953,6 +964,7 @@ class TestRBACSystemPrompt:
     def test_contains_formatting_guidelines(self):
         assert "FORMATTING" in self.prompt
         assert "NEVER use markdown bolding" in self.prompt
+        assert "Returned time is in UTC." in self.prompt
 
     def test_contains_query_guidance(self):
         assert "QUERY GUIDANCE" in self.prompt
