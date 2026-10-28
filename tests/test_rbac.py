@@ -957,6 +957,10 @@ class TestRBACSystemPrompt:
         assert "v_public_departments" in self.prompt
         assert "holidays" in self.prompt
 
+    def test_contains_department_members_lookup_guidance(self):
+        assert "DEPARTMENT MEMBERS / ROSTER LOOKUPS" in self.prompt
+        assert "PUBLIC directory lookup on `v_public_employee_directory`" in self.prompt
+
     def test_no_dml_instructions(self):
         assert "Do not drop tables" in self.prompt
         assert "DML" in self.prompt
