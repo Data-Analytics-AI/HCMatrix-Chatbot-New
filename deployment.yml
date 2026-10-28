@@ -4,7 +4,7 @@ metadata:
   name: hcmatrix-k8s-deployment
   # namespace: hcmatrix-prod # Optional: Define namespace here or rely on kubectl -n flag
 spec:
-#  replicas: 2 # Consider managing replicas via HPA or adjust as needed
+  replicas: 2 # Consider managing replicas via HPA or adjust as needed
   selector:
     matchLabels:
       app: hcmatrix-chatbot
