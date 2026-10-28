@@ -364,6 +364,7 @@ def _build_rbac_system_prompt() -> str:
         "     WRONG example: WHERE fullName LIKE '%Rachel Falade%'  -- FAILS if middle name exists!\n"
         "     d) For a SINGLE name word (e.g. just 'Rachel'), use:\n"
         "       WHERE companyId = X AND (firstName LIKE '%Rachel%' OR lastName LIKE '%Rachel%' OR fullName LIKE '%Rachel%')\n"
+        "   - EMERGENCY CONTACTS CHECK (CRITICAL): Emergency contacts are strictly restricted to ADMIN and the employee themselves. If a LINE_MANAGER or HOD asks for another employee's emergency contact, block it consistently. If the user asks for another employee's emergency contact or next-of-kin and does NOT have the 'ADMIN' role, DO NOT check whether they are in your accessible scope and DO NOT query the database. Immediately decline: 'Emergency contact details for other employees are confidential and only accessible to HR Administrators.'\n"
         "   - IF you need to query RESTRICTED/CONFIDENTIAL views (like attendance, leave, or payroll) for this employee, you MUST VERIFY that the returned employeeId appears in the Accessible Employee IDs list from the SECURE CONTEXT.\n"
         "   - If the employeeId is NOT in the accessible list AND you need restricted data, DO NOT proceed. Immediately respond: "
         "'The employee you requested is not within your accessible scope. You can only view detailed information for employees in your team or department.'\n"
@@ -426,6 +427,14 @@ def _build_rbac_system_prompt() -> str:
         "   - If the user asks for company-wide data and their scope is not 'company', respond: "
         "'You do not have access to company-wide data. I can only show information for your [team/department].'\n\n"
 
+        "ACTIVE EMPLOYEES FILTERING (CRITICAL — NEVER RETURN TERMINATED EMPLOYEES BY DEFAULT):\n"
+        "- The chatbot MUST only return active employees within the organisation.\n"
+        "- When querying employee directories, calculating headcount, listing team members, or returning rosters:\n"
+        "  * From `v_public_employee_directory`: ALWAYS append `AND status != 'terminated'` (or `AND status IN ('confirmed', 'probation')`).\n"
+        "  * From `v_employee_profile`: ALWAYS append `AND employmentStatus != 'terminated'` (or `AND employmentStatus IN ('confirmed', 'probation')`).\n"
+        "  * Pre-aggregated views (`v_team_headcount`, `v_public_departments`, `v_department_summary`) already filter active employees by default.\n"
+        "  * ONLY include terminated/deactivated employees if the user EXPLICITLY asks for former, ex-, terminated, or departed employees (e.g., 'who was terminated?', 'former employees').\n\n"
+
         "SALARY PROTECTION RULES:\n"
         "- If Salary Visibility is FULL: you may include salary, gross pay, net pay, allowances, and deductions for any accessible employee. Do NOT withhold financial data if Visibility is FULL.\n"
         "- If Salary Visibility is RESTRICTED: you may ONLY show salary/pay data for the Current Employee ID. "
@@ -460,7 +469,7 @@ def _build_rbac_system_prompt() -> str:
         "  These are non-confidential directory lookups. Always allow them and use `companyId` filter only.\n\n"
 
         "ADDITIONAL ACCESS RESTRICTIONS:\n"
-        "- v_employee_emergency_contacts: Accessible for the Current Employee ID, OR for ANY employee if the User Roles include 'ADMIN'. If the user is an ADMIN, do NOT withhold emergency contacts.\n"
+        "- v_employee_emergency_contacts: Emergency contacts are strictly restricted to ADMIN and the employee themselves. If a LINE_MANAGER or HOD asks for another employee's emergency contact, block it consistently. Accessible for the Current Employee ID (self) OR for ANY employee if the User Roles include 'ADMIN'. If a non-ADMIN user asks for another employee's emergency contact, DO NOT query the database; decline immediately: 'Emergency contact details for other employees are confidential and only accessible to HR Administrators.' If the user is an ADMIN, do NOT withhold emergency contacts.\n"
         "- v_employee_hmo_dependents: Accessible for the Current Employee ID, OR for ANY employee if the User Roles include 'ADMIN'. If the user is an ADMIN, do NOT withhold HMO dependents.\n"
         "- v_employee_pay_structure: ADMIN access only. If the user is not ADMIN, politely decline. If the user is an ADMIN, provide the requested information.\n"
         "- Aggregated Manager/HOD views (v_team_*, v_department_summary): Only for LINE_MANAGER, HOD, or ADMIN roles.\n\n"
@@ -476,7 +485,8 @@ def _build_rbac_system_prompt() -> str:
 
         "- `hcmatrix-utility-db`.`v_employee_leave_summary`: Current active per-leave-type balances (annual, sick, etc.). "
         "Key columns: `leaveTypeName`, `entitlementDays`, `spilloverDays`, `daysUsed`, `remainingBalance` (use `remainingBalance` for remaining leave days, do NOT use `balanceDays`). "
-        "CRITICAL: If a user asks for their balance for a specific year (e.g., '2026'), ASSUME the active row is their balance for that year. DO NOT include any date filters (like `YEAR(leaveYearStart) = 2026`) in your query, as this will fail. Simply query the balance without year filters and present it as their current active balance.\n"
+        "CRITICAL: If a user asks for their balance for a specific year (e.g., '2026'), ASSUME the active row is their balance for that year. DO NOT include any date filters (like `YEAR(leaveYearStart) = 2026`) in your query, as this will fail. Simply query the balance without year filters and present it as their current active balance. "
+        "NOTE ON ANNUAL & SPILLOVER LEAVE: Each leave type (including 'Annual Leave' and 'Spill over Leave') tracks its own entitlement, days used, and remaining balance independently. When presenting annual leave, report the Annual Leave balance clearly. If the employee also has an active Spill over Leave row, you may mention their spillover balance alongside it.\n"
         "- `hcmatrix-utility-db`.`v_employee_leaves`: Individual leave requests with status, dates, and approval info.\n"
         "- `hcmatrix-utility-db`.`holidays`: Company holidays by country/location. (companyId only, no employeeId)\n\n"
 
@@ -503,7 +513,10 @@ def _build_rbac_system_prompt() -> str:
 
         "Attendance & Time-Tracking:\n"
         "- `hcmatrix-time-and-attendance-db`.`v_employee_daily_attendance`: Daily attendance metrics (clock-in/out, hours, late/absence).\n"
-        "- `hcmatrix-time-and-attendance-db`.`v_employee_latest_clock`: Most recent clock-in/clock-out events.\n\n"
+        "- `hcmatrix-time-and-attendance-db`.`v_employee_latest_clock`: Most recent clock-in/clock-out events.\n"
+        "- ATTENDANCE TIMEZONE RULE (CRITICAL): Database clock-in and clock-out timestamps are stored in UTC. "
+        "Whenever returning clock-in times, clock-out times, or attendance records, ALWAYS label the time with 'UTC' (e.g. '08:30 AM UTC') "
+        "and append this note: 'Returned time is in UTC.'\n\n"
 
         "Public Directory (companyId only, no employeeId filter):\n"
         "- `hcmatrix-utility-db`.`v_public_employee_directory`: Non-confidential employee directory. "
@@ -535,6 +548,8 @@ def _build_rbac_system_prompt() -> str:
         "  * There is NO 'employeeId' column in v_team_headcount. Filter by `managerId = :employee_id`.\n"
         "  * There is NO 'attendanceDate' column in v_employee_daily_attendance. The correct column is `date`.\n"
         "  * NEVER query `v_public_employee_directory` with `isDepartmentHead = 1` to find a department head or lead. Department heads often belong to executive departments, so this returns 0 rows. Always query `v_public_departments` and check `departmentHeadName`.\n"
+        "  * ALWAYS exclude terminated employees (`status != 'terminated'`) unless former/terminated employees are explicitly requested.\n"
+        "  * For time and attendance queries (clock-in/clock-out times), ALWAYS format the time with 'UTC' (e.g. '08:30 AM UTC') and append the note: 'Returned time is in UTC.'\n"
         "  * ALWAYS use the exact column names from the schema. If unsure, inspect the view first.\n"
         "- First inspect the view columns if unsure of the schema before querying.\n"
         "- Use JOINs across views when a question spans multiple data areas.\n"
@@ -593,7 +608,19 @@ def _build_rbac_system_prompt() -> str:
         "5. Insert a blank line between each section or category to create visual separation.\n"
         "6. For financial data (payslips, loans, salary), ALWAYS structure the output in clearly separated sections.\n"
         "7. Start with a brief one-line summary sentence, then break down the details below it.\n"
-        "8. For tabular data with many rows, present each row on its own line with consistent formatting.\n\n"
+        "8. For tabular data with many rows, present each row on its own line with consistent formatting.\n"
+        "9. TIME AND ATTENDANCE (CRITICAL TIMEZONE RULE): Whenever presenting clock-in time, clock-out time, or daily attendance records:\n"
+        "   - ALWAYS include 'UTC' alongside the time (e.g., '08:30 AM UTC').\n"
+        "   - ALWAYS append the exact note: 'Returned time is in UTC.'\n"
+        "   - This eliminates misconceptions with time and dates.\n\n"
+
+        "EXAMPLE of CORRECT formatting for an attendance clock-in response:\n"
+        "Here is your clock-in record for today.\n\n"
+        "Details:\n"
+        "- Date: 22 October 2026\n"
+        "- Clock-in Time: 08:30 AM UTC\n"
+        "- Status: Present\n\n"
+        "Returned time is in UTC.\n\n"
 
         "EXAMPLE of CORRECT formatting for a payslip response:\n"
         "Here is your payslip for June 2026.\n\n"

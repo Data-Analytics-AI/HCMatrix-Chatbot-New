@@ -68,9 +68,13 @@ async def chatbot_entry_execution(
             # 2. Run the Security Guardrail Analyzer (now RBAC-aware)
             security_check = await check_prompt_injection(user_query, llm_4o, user_roles=user_roles)
             if not security_check.get("is_safe", False):
-                reason = security_check.get("reason", "Violates security policy.")
+                reason = security_check.get("reason", "This request cannot be processed due to data access policies.").strip()
                 print(f"🚨 Security Block: {reason}")
-                return f"I'm sorry, I cannot process this request. Reason: {reason}"
+                if reason.lower().startswith("reason:"):
+                    reason = reason[7:].strip()
+                if not reason.endswith("."):
+                    reason += "."
+                return f"I'm sorry, I cannot process this request. {reason}"
 
             # 3. Execute SQL Agent if safe (pass pre-resolved RBAC context to avoid re-resolving)
             sql_agent_response = await sql_layer_agent(
