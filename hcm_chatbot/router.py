@@ -4,7 +4,11 @@ from api.schema import EmployeeMetadataSchema
 from hcm_chatbot.sql_layer import sql_layer_agent, _get_cached_engine
 from hcm_chatbot.rag_layer import rag_layer_agent
 from module.utils import timing_decorator
-from module.query_classifier import classify_query, OUT_OF_SCOPE_RESPONSE
+from module.query_classifier import (
+    classify_query,
+    OUT_OF_SCOPE_RESPONSE,
+    default_conversational_reply,
+)
 from module.security_guardrail import check_prompt_injection
 from module.rbac_service import resolve_rbac_context
 
@@ -19,7 +23,8 @@ async def chatbot_entry_execution(
         chatbot_db_schemas: list,
         chatbot_cache: LRUCache,
         chat_history: list,
-        layer: str
+        layer: str,
+        standalone_query: str = None,
 ) -> str:
     """
     Routes the user query to the appropriate processing layer based on classification.
@@ -53,6 +58,9 @@ async def chatbot_entry_execution(
 
     if layer == 'OUT_OF_SCOPE':
         return OUT_OF_SCOPE_RESPONSE
+
+    if layer == 'CONVERSATIONAL':
+        return default_conversational_reply(user_query)
 
     if layer == 'SQL':
         try:
@@ -104,7 +112,13 @@ async def chatbot_entry_execution(
             return "I'm sorry, I couldn't find that information due to a database error."
 
     # Instead, it should use the RAG layer
-    answer = await rag_layer_agent(user_query, llm_4o, company_id=employee_metadata.company_id, chat_history=chat_history)
+    answer = await rag_layer_agent(
+        user_query,
+        llm_4o,
+        company_id=employee_metadata.company_id,
+        chat_history=chat_history,
+        standalone_query=standalone_query,
+    )
     return answer
 
 

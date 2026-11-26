@@ -50,7 +50,8 @@ for mod in [
     "langchain_community.agent_toolkits.sql",
     "langchain_community.agent_toolkits.sql.toolkit",
     "pinecone", "motor", "pymongo",
-    "langchain_pinecone",
+    "langchain_pinecone", "langchain_pinecone.vectorstores",
+    "langchain_openai.embeddings",
 ]:
     _ensure_mock_module(mod)
 
@@ -73,6 +74,11 @@ _fake_config = {
             "schemas": ["hcmatrix-utility-db"],
         },
         "speech_service": {"key": "fake"},
+        "vector_db_config": {"path": "new_vectorstore"},
+        "pinecone_credentials": {
+            "PINECONE_API_KEY": "fake_pinecone",
+            "index_name": "policy-docs",
+        },
         "azure_oai_credentials": {
             "AZURE_OPENAI_API_KEY": "fake_key",
             "AZURE_OPENAI_ENDPOINT": "https://fake.openai.azure.com/",
@@ -80,8 +86,11 @@ _fake_config = {
             "4O_AZURE_DEPLOYMENT": "fake_deployment",
             "4O_MODEL_NAME": "fake_model",
             "4O_MODEL_VERSION": "fake_version",
+            "AZURE_EMBEDDING_API_KEY": "fake_emb_key",
+            "AZURE_EMBEDDING_API_BASE": "https://fake.openai.azure.com/",
+            "AZURE_EMBEDDING_API_VERSION": "2024-02-01",
         },
-        "layer_one_agent_prompt": "test",
+        "layer_one_agent_prompt": "Context: {context}",
         "adls_credentials": {
             "client_id": "fake",
             "tenant_id": "fake",
@@ -1350,6 +1359,132 @@ class TestOutOfScopeRouting:
 
         result = _run_async(dummy_entry("How does the microphone feature work on the chatbot?"))
         assert result == "Processed in RAG"
+
+    def test_conversational_closing_okay_thanks_early_exits_politely(self):
+        from module.query_classifier import classify_query, OUT_OF_SCOPE_RESPONSE
+        import module.query_classifier as qc
+
+        mock_resp = MagicMock()
+        mock_resp.content = '{"category": "CONVERSATIONAL", "reply": "You\'re welcome! Let me know if you have any other HR questions."}'
+        qc.model.ainvoke = AsyncMock(return_value=mock_resp)
+
+        underlying_called = False
+
+        @classify_query
+        async def dummy_entry(user_query, layer=""):
+            nonlocal underlying_called
+            underlying_called = True
+            return "Should not execute DB or Pinecone"
+
+        result = _run_async(dummy_entry("Okay thanks"))
+        assert result == "You're welcome! Let me know if you have any other HR questions."
+        assert result != OUT_OF_SCOPE_RESPONSE
+        assert underlying_called is False
+
+    def test_conversational_fallback_when_reply_omitted(self):
+        from module.query_classifier import default_conversational_reply
+        assert "welcome" in default_conversational_reply("Okay thanks").lower()
+        assert "hello" in default_conversational_reply("Good morning").lower()
+
+    def test_summarize_answer_preserves_head_and_closing_offer(self):
+        from module.query_classifier import summarize_answer_for_classifier
+
+        long_answer = (
+            "Here is how salary increment works based on Snapnet policy. "
+            + ("Policy detail line regarding management discretion and annual performance. " * 15)
+            + "If you need, I can help you outline a short justification note to your manager."
+        )
+        summary = summarize_answer_for_classifier(long_answer)
+        assert "Here is how salary increment works" in summary
+        assert "outline a short justification note to your manager." in summary
+        assert len(summary) < len(long_answer)
+
+    def test_filter_valid_chat_history_strips_out_of_scope_refusals(self):
+        from module.query_classifier import filter_valid_chat_history, OUT_OF_SCOPE_RESPONSE
+
+        raw_history = [
+            {"question": "how can i get a salary increment", "answer": "Salary increments are at Management discretion."},
+            {"question": "what is 2+2", "answer": OUT_OF_SCOPE_RESPONSE},
+        ]
+        cleaned = filter_valid_chat_history(raw_history)
+        assert len(cleaned) == 1
+        assert cleaned[0]["question"] == "how can i get a salary increment"
+
+        # Also verify SQL secure_context strips out-of-scope refusals
+        ctx = RBACContext(
+            company_id="1",
+            employee_id="169",
+            roles={RBACRole.EMPLOYEE},
+            scope_type=ScopeType.SELF_ONLY,
+            accessible_employee_ids=["169"],
+        )
+        sec_str = build_secure_context(ctx, "what is my salary", chat_history=raw_history)
+        assert "how can i get a salary increment" in sec_str
+        assert OUT_OF_SCOPE_RESPONSE not in sec_str
+
+    def test_classifier_passes_standalone_query_to_rag_handler(self):
+        from module.query_classifier import classify_query
+        import module.query_classifier as qc
+
+        mock_resp = MagicMock()
+        mock_resp.content = (
+            '{"category": "RAG", '
+            '"standalone_query": "salary increment policy raise amount or percentage guidelines"}'
+        )
+        qc.model.ainvoke = AsyncMock(return_value=mock_resp)
+
+        @classify_query
+        async def dummy_router(user_query, chat_history=None, layer="", standalone_query=None):
+            return (layer, standalone_query)
+
+        history = [
+            {"question": "how can i get a salary increment", "answer": "Increments are at Management discretion."}
+        ]
+        layer, sq = _run_async(dummy_router("How much raise do you think i can ask for", chat_history=history))
+        assert layer == "RAG"
+        assert sq == "salary increment policy raise amount or percentage guidelines"
+
+    def test_classifier_prompt_covers_conversational_and_workplace_guidance(self):
+        import module.query_classifier as qc
+        prompt_text = qc.system_prompt.content
+        assert '"CONVERSATIONAL"' in prompt_text
+        assert "How much raise do you think I can ask for?" in prompt_text
+        assert "standalone_query" in prompt_text
+
+    def test_rag_layer_embeds_standalone_query_not_raw_chat_history(self):
+        import hcm_chatbot.rag_layer as rl
+        from module.query_classifier import OUT_OF_SCOPE_RESPONSE
+
+        mock_retriever = MagicMock()
+        mock_retriever.ainvoke = AsyncMock(return_value=[])
+        mock_qa_chain = MagicMock()
+        mock_qa_chain.ainvoke = AsyncMock(return_value="Policy leaves raise amounts to Management discretion.")
+
+        with patch.object(rl, "get_retriever", return_value=mock_retriever), \
+             patch.object(rl, "get_qa_chain", return_value=mock_qa_chain):
+            history = [
+                {"question": "What is my salary", "answer": "Gross pay: 424,800.00, Net pay: 600,000.00"},
+                {"question": "how can i get a salary increment", "answer": "Salary increments are at Management discretion."},
+                {"question": "random off-topic", "answer": OUT_OF_SCOPE_RESPONSE},
+            ]
+            ans = _run_async(
+                rl.rag_layer_agent(
+                    "How much raise do you think i can ask for",
+                    MagicMock(),
+                    company_id="1",
+                    chat_history=history,
+                    standalone_query="salary increment policy raise percentage guidelines",
+                )
+            )
+
+        assert ans == "Policy leaves raise amounts to Management discretion."
+        # Retriever MUST receive ONLY the clean standalone query, NOT the raw history dump
+        mock_retriever.ainvoke.assert_called_once_with("salary increment policy raise percentage guidelines")
+        # QA chain MUST still receive the valid conversation history (without out-of-scope refusal)
+        qa_call_arg = mock_qa_chain.ainvoke.call_args[0][0]
+        assert "Net pay: 600,000.00" in qa_call_arg["input"]
+        assert OUT_OF_SCOPE_RESPONSE not in qa_call_arg["input"]
+        assert "Current Question: How much raise do you think i can ask for" in qa_call_arg["input"]
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain_openai.embeddings import AzureOpenAIEmbeddings
 from module.utils import config
+from module.query_classifier import filter_valid_chat_history
 
 # Azure OpenAI Configuration
 
@@ -39,24 +40,14 @@ prompt = ChatPromptTemplate.from_messages(
     ]
 )
 
-# Cache retrievers and chains per company_id
+# Cache retrievers and chains
 retriever_cache = {}
 chain_cache = {}
+qa_chain_cache = {}
 
 
 def get_retriever(company_id: str):
-    """Retrieve or create a retriever for a given company ID.
-
-    This function checks if a retriever exists in the cache for the specified
-    `company_id`. If not, it creates a new retriever from the vector store,
-    using similarity-based search with a filter for the given company.
-
-    Args:
-        company_id (str): The unique identifier of the company.
-
-    Returns:
-        object: A retriever instance configured for the specified company.
-        """
+    """Retrieve or create a retriever for a given company ID."""
     if company_id not in retriever_cache:
         retriever_cache[company_id] = vector_store.as_retriever(
             search_type="similarity",
@@ -65,50 +56,57 @@ def get_retriever(company_id: str):
     return retriever_cache[company_id]
 
 
+def get_qa_chain(llm_4o: AzureChatOpenAI):
+    """Retrieve or create a cached document-stuffing QA chain."""
+    key = id(llm_4o)
+    if key not in qa_chain_cache:
+        qa_chain_cache[key] = create_stuff_documents_chain(llm_4o, prompt)
+    return qa_chain_cache[key]
+
+
 def get_rag_chain(company_id: str, llm_4o: AzureChatOpenAI):
-    """Retrieve or create a RAG (Retrieval-Augmented Generation) chain for a given company ID.
-
-        This function checks if a RAG chain exists in the cache for the specified `company_id`.
-        If not, it retrieves or creates a retriever, then constructs a retrieval chain using
-        a question-answering model.
-
-        Args:
-            company_id (str): The unique identifier of the company.
-            llm_4o (object): The language model used for generating responses.
-
-        Returns:
-            object: A retrieval-augmented generation (RAG) chain for the specified company.
-        """
+    """Retrieve or create a full RAG chain for a given company ID (legacy helper)."""
     if company_id not in chain_cache:
-        retriever = get_retriever(company_id)  # Get cached retriever
-        question_answer_chain = create_stuff_documents_chain(llm_4o, prompt)
+        retriever = get_retriever(company_id)
+        question_answer_chain = get_qa_chain(llm_4o)
         chain_cache[company_id] = create_retrieval_chain(retriever, question_answer_chain)
     return chain_cache[company_id]
 
 
-async def rag_layer_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id: str, chat_history: list = None) -> str:
-    """Processes a user query using a Retrieval-Augmented Generation (RAG) chain.
+def build_rag_search_query(user_query: str, valid_history: list, standalone_query: str = None) -> str:
+    """Build a clean, focused Pinecone search query without embedding raw chat history dumps."""
+    if standalone_query and standalone_query.strip():
+        return standalone_query.strip()
+    if valid_history and len((user_query or "").split()) <= 8:
+        last_q = str(valid_history[-1].get("question", "")).strip()
+        if last_q and last_q.lower() != (user_query or "").strip().lower():
+            return f"{last_q} {user_query}".strip()
+    return user_query
 
-    This function retrieves or creates a cached RAG chain for the specified company ID
-    and asynchronously invokes it with the user query to generate a response.
 
-    Args:
-        user_query (str): The input query from the user.
-        llm_4o (AzureChatOpenAI): The language model used for generating responses.
-        company_id (str): The unique identifier of the company.
-        chat_history (list): Recent Q&A pairs from the same chat session for conversational context.
+async def rag_layer_agent(
+    user_query: str,
+    llm_4o: AzureChatOpenAI,
+    company_id: str,
+    chat_history: list = None,
+    standalone_query: str = None,
+) -> str:
+    """Processes a user query using decoupled Pinecone retrieval and history-aware QA generation.
 
-    Returns:
-        str: The generated response from the RAG chain.
-
+    Pinecone embeds ONLY the focused standalone search query (avoiding vector dilution from prior
+    payslips or long answers), while the LLM receives the clean conversation history for context.
     """
-    rag_chain = get_rag_chain(company_id, llm_4o)  # Get cached chain
+    valid_history = filter_valid_chat_history(chat_history)
+    search_query = build_rag_search_query(user_query, valid_history, standalone_query=standalone_query)
 
-    # Prepend conversation history to the query for context
+    retriever = get_retriever(company_id)
+    docs = await retriever.ainvoke(search_query)
+
+    # Prepend clean conversation history (excluding out-of-scope refusals) for LLM generation only
     augmented_input = user_query
-    if chat_history:
+    if valid_history:
         history_lines = []
-        for pair in chat_history:
+        for pair in valid_history:
             history_lines.append(f"User: {pair['question']}")
             history_lines.append(f"Assistant: {pair['answer']}")
         history_block = (
@@ -118,6 +116,9 @@ async def rag_layer_agent(user_query: str, llm_4o: AzureChatOpenAI, company_id: 
         )
         augmented_input = f"{history_block}Current Question: {user_query}"
 
-    result = await rag_chain.ainvoke({"input": augmented_input})
-    return result['answer']
+    qa_chain = get_qa_chain(llm_4o)
+    result = await qa_chain.ainvoke({"context": docs, "input": augmented_input})
+    if isinstance(result, dict):
+        return result.get("answer", str(result))
+    return result
 
