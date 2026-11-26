@@ -67,15 +67,24 @@ def build_secure_context(rbac_ctx: RBACContext, query: str, chat_history: list =
     # ── Conversation history ─────────────────────────────────────────────
     history_block = ""
     if chat_history:
+        refusal_lower = "sorry i can only provide answers to question relating to hr related questions only"
         history_lines = []
         for pair in chat_history:
-            history_lines.append(f"User: {pair['question']}")
-            history_lines.append(f"Assistant: {pair['answer']}")
-        history_block = (
-            "--- CONVERSATION HISTORY ---\n"
-            + "\n".join(history_lines)
-            + "\n----------------------------\n"
-        )
+            if not isinstance(pair, dict):
+                continue
+            q = str(pair.get('question', '')).strip()
+            a = str(pair.get('answer', '')).strip()
+            if a.lower() == refusal_lower:
+                continue
+            if q or a:
+                history_lines.append(f"User: {q}")
+                history_lines.append(f"Assistant: {a}")
+        if history_lines:
+            history_block = (
+                "--- CONVERSATION HISTORY ---\n"
+                + "\n".join(history_lines)
+                + "\n----------------------------\n"
+            )
 
     # ── Assemble final input ─────────────────────────────────────────────
     secure_block = "\n".join(lines)

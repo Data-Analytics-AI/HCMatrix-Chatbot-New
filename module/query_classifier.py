@@ -2,7 +2,9 @@ from langchain_openai import AzureChatOpenAI
 from langchain.schema import SystemMessage, HumanMessage
 from module.utils import config
 import os
+import re
 import json
+import inspect
 from functools import wraps
 
 azure_oai_credentials = config['production']['azure_oai_credentials']
@@ -20,25 +22,69 @@ model = AzureChatOpenAI(
 
 OUT_OF_SCOPE_RESPONSE = "sorry i can only provide answers to question relating to HR related questions only"
 
+_ACK_OR_CLOSING_PATTERN = re.compile(
+    r"\b(thanks|thank\s+you|thx|ty|appreciate|okay|ok|got\s+it|understood|alright|noted|great|awesome|perfect|bye|goodbye|see\s+ya|have\s+a\s+good)\b",
+    re.IGNORECASE,
+)
+
+
+def default_conversational_reply(user_query: str) -> str:
+    """Return a polite fallback response for greetings, acknowledgments, or closings."""
+    text = (user_query or "").strip()
+    if _ACK_OR_CLOSING_PATTERN.search(text):
+        return "You're welcome! Let me know if you have any other HR or HCMatrix questions."
+    return "Hello! I'm your HCMatrix HR assistant. How can I help you with HR policies or your employee records today?"
+
+
+def filter_valid_chat_history(chat_history: list) -> list:
+    """Return chronological Q&A pairs excluding empty items and prior out-of-scope refusals."""
+    if not chat_history or not isinstance(chat_history, list):
+        return []
+    valid = []
+    refusal_lower = OUT_OF_SCOPE_RESPONSE.strip().lower()
+    for pair in chat_history:
+        if not isinstance(pair, dict):
+            continue
+        q = str(pair.get("question", "")).strip()
+        a = str(pair.get("answer", "")).strip()
+        if not q and not a:
+            continue
+        if a.lower() == refusal_lower:
+            continue
+        valid.append({"question": q, "answer": a})
+    return valid
+
+
+def summarize_answer_for_classifier(answer: str, head_chars: int = 220, tail_chars: int = 220) -> str:
+    """Keep both the start and end of long assistant answers so closing follow-up offers remain visible."""
+    a = (answer or "").strip()
+    if len(a) <= head_chars + tail_chars + 20:
+        return a
+    return f"{a[:head_chars].rstrip()} ... {a[-tail_chars:].lstrip()}"
+
+
 system_prompt = SystemMessage(
-    content="""You are an AI assistant that classifies user queries into one of three categories:
+    content="""You are an AI assistant that classifies user messages in an enterprise HR chatbot (HCMatrix) into one of four categories:
 
-- "SQL": If the query is related to employee data, organizational data, or any factual/transactional information
-  that can be looked up in the database. This includes: employee personal details, job titles, designations,
-  roles (e.g. CEO, Manager, Director), salary, payroll, managers, reporting structure, employment history,
-  education, emergency contacts, attendance, clock-in/clock-out records, leave balances and requests,
-  loan requests and loans, assets, vehicles, vehicle bookings, departments, public holidays, health/HMO plans,
-  hospitals, company information, and any question asking "who is", "who has", "how many", "list all", "show me", etc.
+- "SQL": If the query asks for specific employee data, organizational data, or factual/transactional records stored in the database.
+  This includes: employee personal details, job titles, designations, roles (e.g. CEO, Manager, Director), specific salary/payslip figures,
+  managers, reporting structure, employment history, education, emergency contacts, attendance, clock-in/clock-out records,
+  leave balances and leave applications, loan requests and balances, assets, vehicles, vehicle bookings, departments,
+  public holidays, health/HMO plans, hospitals, company directory lookups, and questions asking "who is", "who has", "how many", "list all", "show me", etc.
 
-- "RAG": If the query is related to company policies, guidelines, or procedural documentation such as:
-  dress code, work-from-home policies, code of conduct, leave policies, HR handbooks, onboarding guides,
-  disciplinary procedures, or other company policy-related queries, OR if the query is about HCMatrix system usage,
-  chatbot capabilities, the microphone/voice feature, or contacting support.
+- "RAG": If the query relates to company policies, workplace guidelines, HR procedures, HR/workplace guidance, or HCMatrix/chatbot usage.
+  This includes:
+  * Company policies & handbooks: dress code, work-from-home/remote policies, code of conduct, leave policies, salary increment/review policies, appraisal/performance procedures, disciplinary rules, onboarding guides.
+  * Workplace & HR advisory follow-ups: questions about how salary reviews or raises work, how much raise/increment an employee can ask for, eligibility questions, how to approach a manager or HR about a workplace/compensation/leave matter, or requests to help draft an HR-related note/message (e.g. salary review justification, leave request note).
+  * Chatbot & HCMatrix usage: questions about the chatbot itself (e.g. "what is your name?", "what can you do?"), its microphone/voice feature, how to use HCMatrix, or contacting support.
 
-- "OUT_OF_SCOPE": If the query is completely unrelated to HR, company policies, employee records, or HCMatrix/chatbot usage.
-  This includes: general knowledge, cooking, recipes, sports, entertainment, movies, music, coding/software development,
-  math, science, weather, personal advice, news, translation, or general trivia/chit-chat.
-  NOTE: Questions about the chatbot itself, its microphone/voice feature, its capabilities, or how to use HCMatrix are NOT out-of-scope; classify them as "RAG".
+- "CONVERSATIONAL": ONLY for pure greetings, pleasantries, brief acknowledgments, or polite closings that do NOT ask an HR, policy, or data question.
+  Examples: "Hello", "Hi", "Good morning", "Hey there", "Okay thanks", "Thank you", "Alright, got it", "Understood, thanks!", "Bye".
+  IMPORTANT: If a greeting is combined with an actual question (e.g. "Hello, what is my role?", "Hi what is your name?", "Thanks, also what is my leave balance?"), do NOT use "CONVERSATIONAL" — classify according to the question ("SQL" or "RAG").
+
+- "OUT_OF_SCOPE": ONLY if the query is genuinely unrelated to HR, the workplace, company policies, employee records, or HCMatrix/chatbot usage.
+  Examples: cooking/recipes, sports, entertainment/movies/music, general software coding/debugging, math/science homework, weather, external news, translation of unrelated text, non-work personal/relationship/medical advice, or general world trivia.
+  CRITICAL DISTINCTION: Workplace, career, compensation, or HR policy guidance (such as "How much raise do you think I can ask for?", "Should I speak to HR or my manager?", or accepting an offer the assistant made in the prior turn) is NOT out-of-scope — classify it as "RAG".
 
 SQL Layer includes the following views and their relevant data:
 
@@ -88,32 +134,37 @@ Any question about assets, vehicles, or vehicle bookings is an SQL query.
 Any question about other employees in the company directory or department listings is an SQL query.
 
 FOLLOW-UP QUESTIONS & CONTEXT AWARENESS (CRITICAL):
-- When the user asks a follow-up question, pronoun reference, or continuation (such as "provide the names?", "who are they?", "list them", "how many are full time?", "show their emails", "break it down by department", "what about last month?", "can you tell me more about that?"):
-  * Look at the RECENT CONVERSATION CONTEXT.
-  * If the ongoing conversation is about employee records, headcount, attendance, leaves, payroll, loans, assets, or company directory, then the follow-up question MUST be classified as "SQL".
-  * If the ongoing conversation is about company policies, guidelines, or procedures, then the follow-up question MUST be classified as "RAG".
-  * NEVER classify follow-up questions or conversational continuations as "OUT_OF_SCOPE" when they relate to the ongoing HR/organizational topic.
-  * ONLY classify as "OUT_OF_SCOPE" if the question is genuinely unrelated to the company or HR (e.g. asking for cooking recipes, sports, weather, coding, video games, world geography, math formulas, general trivia).
+- Always inspect the RECENT CONVERSATION CONTEXT before classifying:
+  1. Data follow-ups ("provide the names?", "who are they?", "list them", "how many are full time?", "show their emails", "break it down by department", "what about last month?") -> "SQL" when following employee/organizational data queries.
+  2. Policy, compensation, & workplace guidance follow-ups ("How much raise do you think I can ask for?", "even for males?", "what if I am on probation?", "how do I request that?", "am I eligible for it?", "yes, help me outline that justification note") -> "RAG".
+  3. Assistant offer continuations: Look at the end of the previous Assistant response. If the Assistant offered to explain further, provide an example, or help draft an HR note, and the user accepts or asks a related follow-up ("yes please", "go ahead", "help me write it"), route to "RAG" (or "SQL" if it offered a database lookup).
+  4. Polite acknowledgments or closings ("Okay thanks", "Thank you", "Got it", "Alright") -> "CONVERSATIONAL" with a brief, polite plain-text reply. NEVER classify greetings, thanks, or HR follow-ups as "OUT_OF_SCOPE".
 
-Respond strictly in JSON format: {"category": "SQL" | "RAG" | "OUT_OF_SCOPE"}
+STANDALONE SEARCH QUERY (FOR RAG):
+- Whenever category is "RAG", set "standalone_query" to a self-contained HR policy search query that resolves pronouns and implicit references from RECENT CONVERSATION CONTEXT (for example, if prior turn was about salary increments and user asks "How much raise do you think I can ask for?", standalone_query should be "salary increment policy raise amount or percentage guidelines"; if user switches topics to "What is the dress code?", standalone_query should simply be "dress code policy" without prior topic noise).
+
+Respond strictly in JSON format:
+{
+  "category": "SQL" | "RAG" | "CONVERSATIONAL" | "OUT_OF_SCOPE",
+  "standalone_query": "self-contained search query (required when category is RAG)",
+  "reply": "brief polite plain-text response without markdown bolding (ONLY when category is CONVERSATIONAL)"
+}
 """)
 
 
 def classify_query(func):
-    """Classifies the user query as 'SQL', 'RAG', or 'OUT_OF_SCOPE'.
+    """Classifies the user query as 'SQL', 'RAG', 'CONVERSATIONAL', or 'OUT_OF_SCOPE'.
 
-    This decorator uses an AI model to analyze the user query and determine
-    whether it should be processed using the SQL or RAG layer, or immediately
-    refused if it is out-of-scope (saving tokens and latency).
-    Takes into account recent conversation context for follow-up questions.
-
-    Args:
-        func (Callable): The function to be wrapped, which processes the query.
-
-    Returns:
-        Callable: The wrapped function that classifies the query and routes it
-        accordingly.
+    Uses recent conversation context (preserving both start and end of prior answers and
+    ignoring prior out-of-scope refusals) to accurately route follow-up questions, generate
+    a clean standalone search query for RAG vector retrieval, and reply directly to
+    greetings/acknowledgments without unnecessary DB or vector store calls.
     """
+    sig = inspect.signature(func)
+    accepts_standalone = (
+        "standalone_query" in sig.parameters
+        or any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+    )
 
     @wraps(func)
     async def wrapper(user_query, *args, **kwargs):
@@ -122,19 +173,19 @@ def classify_query(func):
         if not chat_history and len(args) >= 6:
             chat_history = args[5]
 
-        # Build context-aware prompt if previous conversation turns exist
+        # Build context-aware prompt from valid prior turns (skipping out-of-scope refusals)
         content = user_query
-        if chat_history and isinstance(chat_history, list) and len(chat_history) > 0:
+        valid_history = filter_valid_chat_history(chat_history)
+        if valid_history:
             history_lines = []
-            for pair in chat_history[-3:]:
-                if isinstance(pair, dict):
-                    q = str(pair.get('question', '')).strip()
-                    a = str(pair.get('answer', '')).strip()
-                    if q:
-                        history_lines.append(f"User: {q}")
-                    if a:
-                        a_short = (a[:160] + "...") if len(a) > 160 else a
-                        history_lines.append(f"Assistant: {a_short}")
+            for pair in valid_history[-4:]:
+                q = pair['question']
+                a = pair['answer']
+                if q:
+                    history_lines.append(f"User: {q}")
+                if a:
+                    a_summary = summarize_answer_for_classifier(a)
+                    history_lines.append(f"Assistant: {a_summary}")
             if history_lines:
                 history_text = "\n".join(history_lines)
                 content = (
@@ -146,11 +197,17 @@ def classify_query(func):
 
         user_prompt = HumanMessage(content=content)
         response = await model.ainvoke([system_prompt, user_prompt])
+        standalone_query = user_query
+        conversational_reply = ""
         try:
             parsed = json.loads(response.content)
             query_class = str(parsed.get('category', 'RAG')).strip().upper()
-            if query_class not in ('SQL', 'RAG', 'OUT_OF_SCOPE'):
+            if query_class not in ('SQL', 'RAG', 'CONVERSATIONAL', 'OUT_OF_SCOPE'):
                 query_class = 'RAG'
+            sq = str(parsed.get('standalone_query') or '').strip()
+            if sq:
+                standalone_query = sq
+            conversational_reply = str(parsed.get('reply') or '').replace('**', '').replace('__', '').strip()
         except Exception as e:
             print(f"⚠️ Query classification parsing error: {e}")
             query_class = 'RAG'
@@ -158,9 +215,16 @@ def classify_query(func):
         print(f"User question classified as a {query_class} "
               f"query and is being routed to the {query_class} layer")
 
-        # Early exit: save tokens, embeddings, vector lookups, and secondary LLM calls
+        # Early exit for out-of-scope queries
         if query_class == 'OUT_OF_SCOPE':
             return OUT_OF_SCOPE_RESPONSE
+
+        # Early exit for pure greetings / acknowledgments / closings
+        if query_class == 'CONVERSATIONAL':
+            return conversational_reply or default_conversational_reply(user_query)
+
+        if accepts_standalone:
+            kwargs['standalone_query'] = standalone_query
 
         return await func(user_query, *args, layer=query_class, **kwargs)
 
